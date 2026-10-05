@@ -46,6 +46,7 @@
     <nav class="nav">
       <button data-view="log" class="active"><span class="nav-icon" data-icon="log"></span><span data-i18n="nav.log">Log</span></button>
       <button data-view="list"><span class="nav-icon" data-icon="list"></span><span data-i18n="nav.list">History</span></button>
+      <button data-view="calendar"><span class="nav-icon" data-icon="calendar"></span><span data-i18n="nav.calendar">Calendar</span></button>
       <button data-view="stats"><span class="nav-icon" data-icon="stats"></span><span data-i18n="nav.stats">Stats</span></button>
       <button data-view="settings"><span class="nav-icon" data-icon="settings"></span><span data-i18n="nav.settings">Settings</span></button>
     </nav>
@@ -105,6 +106,23 @@
       <ul id="record-list" class="reading-list grouped"></ul>
     </section>
 
+    <!-- 日曆：一個月，每天上半圓早上、下半圓晚上 -->
+    <section id="view-calendar" class="view">
+      <div class="cal-toolbar">
+        <button type="button" id="cal-prev" class="pager-btn" data-i18n-attr="aria-label:cal.prev,title:cal.prev">‹</button>
+        <div class="cal-label"><input type="month" id="cal-month-input" data-i18n-attr="aria-label:cal.pickMonth"></div>
+        <button type="button" id="cal-next" class="pager-btn" data-i18n-attr="aria-label:cal.next,title:cal.next">›</button>
+        <button type="button" id="cal-today" class="btn ghost small" data-i18n="cal.today"></button>
+      </div>
+      <div class="cal-layout">
+        <div>
+          <div id="calendar-month" class="card cal-month"></div>
+          <div id="cal-legend" class="cal-legend" aria-hidden="true"></div>
+        </div>
+        <div id="cal-detail" class="card cal-detail"></div>
+      </div>
+    </section>
+
     <!-- 統計（內容由 statsview.js 產生） -->
     <section id="view-stats" class="view"></section>
 
@@ -136,7 +154,7 @@
       <div class="card">
         <h2 class="card-title"><span data-icon="importIcon"></span><span data-i18n="import.title"></span></h2>
         <p class="muted small" data-i18n="import.desc"></p>
-        <label class="btn ghost file-btn"><span data-i18n="import.button"></span><input type="file" id="import-file" accept=".json,application/json"></label>
+        <button id="btn-import" class="btn ghost" data-i18n="import.title"></button>
       </div>
 
       <h3 class="settings-group" data-i18n="settings.groupAbout"></h3>
@@ -185,11 +203,26 @@
     </form>
   </dialog>
 
-  <!-- 匯入預覽 -->
-  <dialog id="import-dialog" class="confirm-dialog">
+  <!-- 匯入：AI 整理 → 貼上 → 預覽 → 匯入；或直接選擇本網站匯出的 JSON 檔 -->
+  <dialog id="import-dialog">
     <form id="import-form" method="dialog">
       <div class="dialog-body">
         <h2 data-i18n="import.title"></h2>
+        <p class="muted small" data-i18n="import.privacy"></p>
+
+        <p class="step" data-i18n="import.step1"></p>
+        <div class="ai-buttons">
+          <a id="ai-chatgpt" class="btn ghost" target="_blank" rel="noopener noreferrer" data-i18n="import.openChatgpt"></a>
+          <a id="ai-claude" class="btn ghost" target="_blank" rel="noopener noreferrer" data-i18n="import.openClaude"></a>
+          <button type="button" id="btn-copy-prompt" class="btn ghost" data-i18n="import.copyPrompt"></button>
+        </div>
+
+        <p class="step" data-i18n="import.step2"></p>
+        <textarea id="import-text" rows="6" data-i18n-attr="placeholder:import.placeholder"></textarea>
+        <label class="file-pick">
+          <span data-i18n="import.file"></span>
+          <input type="file" id="import-file" accept=".json,application/json,text/plain">
+        </label>
         <div id="import-preview" class="import-preview"></div>
       </div>
       <div class="dialog-actions">

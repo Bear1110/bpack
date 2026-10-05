@@ -139,3 +139,23 @@ test('722：最近 7 天裡早晚都有量的天數', () => {
 test('localDate 補零', () => {
   assert.equal(localDate(new Date(2026, 0, 5)), '2026-01-05');
 });
+
+// ---------- 日曆：每天的早晚半圓 ----------
+
+import { dayHalves } from '../js/stats.js';
+
+test('dayHalves：早晚各自平均並分級，下午算成小點', () => {
+  const m = dayHalves([
+    rec('2026-10-05T07:00', 118, 76), rec('2026-10-05T07:03', 122, 80), // 早上兩次 → 120/78 偏高
+    rec('2026-10-05T14:00', 150, 95), // 下午 → other
+    rec('2026-10-06T21:00', 142, 91), // 只有晚上
+  ]);
+  const d5 = m.get('2026-10-05');
+  assert.deepEqual(d5.morning, { systolic: 120, diastolic: 78, n: 2, cat: 'elevated' });
+  assert.equal(d5.evening, null);
+  assert.equal(d5.other, 1);
+  const d6 = m.get('2026-10-06');
+  assert.equal(d6.morning, null);
+  assert.equal(d6.evening.cat, 'stage2');
+  assert.equal(d6.other, 0);
+});

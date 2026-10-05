@@ -4,8 +4,10 @@ import { openSpreadsheet, fetchEmail, ApiError } from './sheets.js';
 import { OPTIONS, LIMITS, NUMERIC_FIELDS, newId } from './schema.js';
 import { CLIENT_ID } from './config.js';
 import { t, getLang, setLang, initI18n, LANGS } from './i18n.js';
-import { localDate, dayOf, classify, periodOf, average, groupByDay, inRange, sevenTwoTwo } from './stats.js';
+import { localDate, dayOf, classify, periodOf, average, groupByDay, inRange, sevenTwoTwo, CATEGORIES } from './stats.js';
 import { createStatsView } from './statsview.js';
+import { renderCalendar as calendarHtml, circleSvg } from './calendar.js';
+import { buildPrompt, aiLinks, parseImport, buildExport } from './importer.js';
 import { applyIcons, icon } from './icons.js';
 import { APP_VERSION } from './version.js';
 
@@ -373,19 +375,11 @@ function confirmClear(e) {
     });
 }
 
-// ---------- 匯出 / 匯入（本網站自己的 JSON） ----------
-
-const EXPORT_FIELDS = ['id', 'time', 'systolic', 'diastolic', 'pulse', 'arm', 'tags', 'notes', 'created_at', 'updated_at'];
+// ---------- 匯出 / 匯入 ----------
 
 function exportRecords() {
-  const records = [...store.getRecords()].sort((a, b) => a.time.localeCompare(b.time));
-  const data = {
-    app: 'bpack',
-    version: APP_VERSION,
-    exported_at: new Date().toISOString(),
-    records: records.map((r) => Object.fromEntries(EXPORT_FIELDS.map((k) => [k, r[k] ?? (k === 'tags' ? [] : null)]))),
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const records = store.getRecords();
+  const blob = new Blob([JSON.stringify(buildExport(records), null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -397,70 +391,55 @@ function exportRecords() {
   toast(t('export.done', { n: records.length }));
 }
 
+// 匯入：AI 整理 → 貼上 → 預覽 → 匯入；或直接選擇本網站匯出的 JSON 檔
+let importPrompt = '';
 let pendingImport = [];
 
-// 解析匯出的 JSON：接受 { records: [...] } 或純陣列；以 ID 或（時間 + 數值）判斷重複
-function parseImport(text, existing) {
-  let data;
-  try { data = JSON.parse(text); } catch { throw new Error('no_json'); }
-  const list = Array.isArray(data) ? data : data?.records;
-  if (!Array.isArray(list)) throw new Error('no_json');
-  const ids = new Set(existing.map((r) => r.id));
-  const keys = new Set(existing.map((r) => `${r.time}|${r.systolic}|${r.diastolic}`));
-  const records = [];
-  let duplicates = 0;
-  let errors = 0;
-  for (const raw of list) {
-    const s = Number(raw?.systolic);
-    const d = Number(raw?.diastolic);
-    const time = typeof raw?.time === 'string' ? raw.time.slice(0, 16) : '';
-    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(time) || !Number.isFinite(s) || !Number.isFinite(d)) {
-      errors += 1;
-      continue;
-    }
-    const key = `${time}|${s}|${d}`;
-    if ((raw.id && ids.has(raw.id)) || keys.has(key)) {
-      duplicates += 1;
-      continue;
-    }
-    keys.add(key);
-    const pulse = Number(raw.pulse);
-    records.push({
-      id: typeof raw.id === 'string' && raw.id ? raw.id : newId(),
-      time,
-      systolic: s,
-      diastolic: d,
-      pulse: Number.isFinite(pulse) && raw.pulse !== null && raw.pulse !== '' ? pulse : null,
-      arm: OPTIONS.arm.includes(raw.arm) ? raw.arm : '',
-      tags: Array.isArray(raw.tags) ? raw.tags.filter((x) => OPTIONS.tags.includes(x)) : [],
-      notes: typeof raw.notes === 'string' ? raw.notes : '',
-    });
-  }
-  return { records, duplicates, errors };
+function openImport() {
+  importPrompt = buildPrompt();
+  const links = aiLinks(importPrompt);
+  $('#ai-chatgpt').href = links.chatgpt;
+  $('#ai-claude').href = links.claude;
+  $('#import-text').value = '';
+  previewImport();
+  $('#import-dialog').showModal();
 }
 
-async function pickImportFile(file) {
+function copyPrompt() {
+  navigator.clipboard.writeText(importPrompt)
+    .then(() => toast(t('import.copied')))
+    .catch((e) => console.warn('clipboard', e));
+}
+
+// 貼上後即時解析與預覽
+function previewImport() {
+  const text = $('#import-text').value.trim();
   const box = $('#import-preview');
   const btn = $('#btn-import-confirm');
   pendingImport = [];
   btn.disabled = true;
   btn.textContent = t('import.title');
+  if (!text) {
+    box.innerHTML = '';
+    return;
+  }
+  let result;
   try {
-    const result = parseImport(await file.text(), store.getRecords());
-    pendingImport = result.records;
-    const n = pendingImport.length;
-    const shown = pendingImport.slice(0, 10).map((r) => `<li>${escapeHtml(`${formatDateTime(r.time)} · ${bpText(r.systolic, r.diastolic)}${r.pulse ? ` · ${t('list.pulse', { n: r.pulse })}` : ''}`)}</li>`).join('');
-    box.innerHTML = `
-      <p class="ok">${escapeHtml(t('import.ready', { n }))}</p>
-      ${result.duplicates ? `<p class="muted small">${escapeHtml(t('import.duplicates', { n: result.duplicates }))}</p>` : ''}
-      ${result.errors ? `<p class="error small">${escapeHtml(t('import.errors', { n: result.errors }))}</p>` : ''}
-      ${n ? `<ul>${shown}${n > 10 ? `<li class="muted">…</li>` : ''}</ul>` : ''}`;
-    btn.disabled = !n;
-    btn.textContent = t('import.confirm', { n });
+    result = parseImport(text, store.getRecords());
   } catch {
     box.innerHTML = `<p class="error">${escapeHtml(t('import.noJson'))}</p>`;
+    return;
   }
-  $('#import-dialog').showModal();
+  pendingImport = result.records;
+  const n = pendingImport.length;
+  const shown = pendingImport.slice(0, 20).map((r) => `<li>${escapeHtml(`${formatDateTime(r.time)} · ${bpText(r.systolic, r.diastolic)}${r.pulse != null ? ` · ${t('list.pulse', { n: r.pulse })}` : ''}`)}</li>`).join('');
+  box.innerHTML = `
+    <p class="ok">${escapeHtml(t('import.ready', { n }))}</p>
+    ${result.duplicates ? `<p class="muted small">${escapeHtml(t('import.duplicates', { n: result.duplicates }))}</p>` : ''}
+    ${result.errors.length ? `<p class="error small">${escapeHtml(t('import.errors', { n: result.errors.length }))}</p>` : ''}
+    ${n ? `<ul>${shown}${n > 20 ? `<li class="muted">${escapeHtml(t('import.more', { n: n - 20 }))}</li>` : ''}</ul>` : ''}`;
+  btn.disabled = !n;
+  btn.textContent = t('import.confirm', { n });
 }
 
 function confirmImport(e) {
@@ -474,6 +453,124 @@ function confirmImport(e) {
   toast(t('import.done', { n: list.length }));
   showView('list');
   trySync();
+}
+
+// ---------- 日曆 ----------
+//
+// 一次一個月，‹ › 或左右滑動切換，月份標籤是原生的年月選擇器；旁邊的明細面板
+// 沒選日期時列出整個月的紀錄，選了日期就列出當天的紀錄，並可從那天補登。
+
+const thisMonth = () => localDate(new Date()).slice(0, 7);
+const shiftMonth = (ym, n) => localDate(new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + n, 1)).slice(0, 7);
+let calMonth = thisMonth(); // 'YYYY-MM'
+let calSelected = null; // 'YYYY-MM-DD'
+
+function goCal({ month = calMonth, selected = null } = {}) {
+  calMonth = month > thisMonth() ? thisMonth() : month;
+  calSelected = selected;
+  renderCalendarView();
+}
+
+function renderCalendarView() {
+  const input = $('#cal-month-input');
+  input.max = thisMonth();
+  if (document.activeElement !== input && input.value !== calMonth) input.value = calMonth;
+  $('#cal-next').disabled = calMonth >= thisMonth();
+  $('#cal-today').hidden = calMonth === thisMonth();
+  $('#calendar-month').innerHTML = calendarHtml({ records: store.getRecords(), month: calMonth, lang: getLang(), t, selected: calSelected });
+  renderDayDetail();
+}
+
+function renderCalLegend() {
+  const sample = (m, e, other = 0) => circleSvg({ morning: m && { cat: m }, evening: e && { cat: e }, other }, { small: true });
+  $('#cal-legend').innerHTML = `
+    <span>${sample('normal', 'stage1')}${escapeHtml(`${t('cal.legendTop')} · ${t('cal.legendBottom')}`)}</span>
+    <span>${sample('normal', null)}${escapeHtml(t('cal.legendEmpty'))}</span>
+    <span>${sample('normal', 'normal', 1)}${escapeHtml(t('cal.legendOther'))}</span>
+    <span class="cal-legend-cats">${CATEGORIES.map((c) => `<i class="cat-dot cat-${c}"></i>${escapeHtml(t(`cat.${c}`))}`).join(' ')}</span>`;
+}
+
+function renderDayDetail() {
+  const panel = $('#cal-detail');
+  const all = store.getRecords();
+  const items = (calSelected
+    ? all.filter((r) => dayOf(r.time) === calSelected)
+    : all.filter((r) => r.time?.startsWith(calMonth)))
+    .sort((a, b) => b.time.localeCompare(a.time));
+  const title = calSelected ? formatDay(calSelected) : t('cal.monthEntries', { n: items.length });
+  panel.innerHTML = `
+    <div class="cal-detail-head">
+      <h4>${escapeHtml(title)}</h4>
+      ${calSelected ? `<button type="button" class="link-btn" data-clear-day>${escapeHtml(t('cal.showMonth'))}</button>` : ''}
+    </div>
+    ${items.length
+      ? `<ul class="reading-list">${items.map((r) => readingHtml(r, { showDate: !calSelected })).join('')}</ul>`
+      : `<p class="muted small">${escapeHtml(t(calSelected ? 'cal.noEntries' : 'cal.noEntriesMonth'))}</p>`}
+    ${calSelected ? `<button type="button" class="btn ghost small" data-add-day="${calSelected}">＋ ${escapeHtml(t('cal.addForDay'))}</button>` : ''}`;
+}
+
+// 點日期：只更新選取與明細（不重繪整個月曆）
+function selectDay(day) {
+  calSelected = calSelected === day ? null : day;
+  document.querySelectorAll('#calendar-month .cal-day.selected').forEach((b) => {
+    b.classList.remove('selected');
+    b.setAttribute('aria-pressed', 'false');
+  });
+  const btn = calSelected && $('#calendar-month').querySelector(`[data-day="${calSelected}"]`);
+  btn?.classList.add('selected');
+  btn?.setAttribute('aria-pressed', 'true');
+  renderDayDetail();
+  const panel = $('#cal-detail');
+  if (calSelected && panel.getBoundingClientRect().top > window.innerHeight - 120) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function slideCalendar(dir) {
+  if (reduceMotion.matches) return;
+  const x = dir * (document.documentElement.dir === 'rtl' ? -1 : 1) * 24;
+  $('#calendar-month').animate(
+    [{ transform: `translateX(${x}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }],
+    { duration: 200, easing: 'cubic-bezier(.2, .8, .2, 1)' },
+  );
+}
+
+function stepCalendar(n) {
+  const before = calMonth;
+  goCal({ month: shiftMonth(calMonth, n) });
+  if (calMonth !== before) slideCalendar(n);
+}
+
+function onCalendarClick(e) {
+  const el = e.target.closest('#cal-prev,#cal-next,#cal-today,[data-day],[data-clear-day],li[data-id],[data-add-day]');
+  if (!el) return;
+  if (el.id === 'cal-prev') return stepCalendar(-1);
+  if (el.id === 'cal-next') return stepCalendar(1);
+  if (el.id === 'cal-today') {
+    goCal({ month: thisMonth() });
+    return slideCalendar(1);
+  }
+  if (el.dataset.day) return selectDay(el.dataset.day);
+  if (el.hasAttribute('data-clear-day')) return goCal();
+  if (el.dataset.id) return openForm(store.getRecords().find((r) => r.id === el.dataset.id));
+  // 補登：日期用選取的那天，時間先帶早上 7 點
+  if (el.dataset.addDay) openForm(null, { time: `${el.dataset.addDay}T07:00` });
+}
+
+// 左右滑動切換月份（往右滑 = 上個月）
+function bindCalendarSwipe() {
+  const box = $('#calendar-month');
+  let x0 = null;
+  let y0 = null;
+  box.addEventListener('touchstart', (e) => { [x0, y0] = [e.touches[0].clientX, e.touches[0].clientY]; }, { passive: true });
+  box.addEventListener('touchend', (e) => {
+    if (x0 == null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    const dy = e.changedTouches[0].clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const rtl = document.documentElement.dir === 'rtl';
+    stepCalendar((dx > 0) !== rtl ? -1 : 1);
+  }, { passive: true });
 }
 
 // ---------- 畫面 ----------
@@ -652,6 +749,7 @@ function render() {
   renderBackupCard();
   renderTagline();
   renderList();
+  if (document.body.dataset.view === 'calendar') renderCalendarView(); // 隱藏時不畫，切過去時再畫
   statsView?.render();
   renderSettings();
 }
@@ -662,6 +760,7 @@ function refreshLanguage() {
   $('#footer-version').textContent = `v${APP_VERSION}`;
   $('#app-version').textContent = t('settings.version', { v: APP_VERSION });
   buildForms();
+  renderCalLegend();
   render();
 }
 
@@ -670,6 +769,7 @@ function showView(name) {
   renderSync();
   window.scrollTo(0, 0);
   if (name === 'stats') statsView?.render(); // 隱藏時量不到圖表寬度，切過來再畫一次
+  if (name === 'calendar') renderCalendarView();
   document.querySelectorAll('.nav button').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
 }
 
@@ -743,13 +843,23 @@ function bindEvents() {
   });
 
   $('#btn-export').addEventListener('click', exportRecords);
+  $('#btn-import').addEventListener('click', openImport);
+  $('#btn-copy-prompt').addEventListener('click', copyPrompt);
+  $('#import-text').addEventListener('input', previewImport);
+  // 直接選擇匯出的 JSON 檔：讀進文字框，沿用同一套解析與預覽
   $('#import-file').addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
+    if (!file) return;
+    $('#import-text').value = await file.text();
     e.target.value = '';
-    if (file) await pickImportFile(file);
+    previewImport();
   });
   $('#import-form').addEventListener('submit', confirmImport);
   $('#btn-import-close').addEventListener('click', () => $('#import-dialog').close());
+
+  $('#view-calendar').addEventListener('click', onCalendarClick);
+  $('#cal-month-input').addEventListener('change', (e) => { if (e.target.value) goCal({ month: e.target.value }); });
+  bindCalendarSwipe();
 
   const langSelect = $('#lang-select');
   langSelect.innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');

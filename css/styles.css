@@ -157,6 +157,7 @@ main { max-width: 640px; margin: 0 auto; padding: var(--gutter); }
 .view { display: none; flex-direction: column; gap: 1rem; }
 body[data-view="log"] #view-log,
 body[data-view="list"] #view-list,
+body[data-view="calendar"] #view-calendar,
 body[data-view="stats"] #view-stats,
 body[data-view="settings"] #view-settings { display: flex; }
 
@@ -273,8 +274,6 @@ body[data-view="settings"] #view-settings { display: flex; }
 .list-day:first-child { margin-top: 0; }
 .list-day-avg { font-weight: 600; font-variant-numeric: tabular-nums; }
 .list-more { margin-top: .25rem; }
-.file-btn { display: inline-flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; min-height: 0; }
 
 /* 折線圖 */
 .chart .line path { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
@@ -511,6 +510,57 @@ dialog.confirm-dialog {
 dialog.confirm-dialog form { height: auto; }
 dialog.confirm-dialog .dialog-body { padding-top: 1.25rem; }
 
+/* ---------- 日曆 ---------- */
+
+.cal-toolbar { display: flex; align-items: center; gap: .4rem; }
+.cal-label { flex: 1; max-width: 18rem; }
+@media (min-width: 900px) { .cal-toolbar { justify-content: flex-start; } }
+.cal-label input[type="month"] { width: 100%; min-height: var(--tap); text-align: center; font-weight: 700; cursor: pointer; }
+#cal-today[hidden] { display: inline-block; visibility: hidden; }
+.pager-btn {
+  appearance: none; width: var(--tap); height: var(--tap); border-radius: 50%; cursor: pointer; flex: none;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 1.4rem; line-height: 1;
+}
+.pager-btn:disabled { opacity: .3; cursor: default; }
+[dir="rtl"] .pager-btn { transform: scaleX(-1); }
+.cal-layout { display: grid; grid-template-columns: 1fr; gap: 1rem; align-items: start; }
+.cal-month { padding: .6rem; touch-action: pan-y; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-wd { text-align: center; font-size: .75rem; color: var(--muted); padding-bottom: .2rem; }
+.cal-day {
+  display: flex; flex-direction: column; align-items: center; gap: .1rem; padding: .15rem 0 .25rem; min-height: 56px;
+  font: inherit; cursor: pointer; background: none; color: var(--text);
+  border: 1px solid transparent; border-radius: 10px;
+}
+.cal-day:disabled { cursor: default; }
+.cal-day:disabled .cal-num { opacity: .35; }
+.cal-num { align-self: flex-start; padding-inline-start: .3rem; font-size: .72rem; line-height: 1; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cal-day.has-readings .cal-num { color: var(--text); font-weight: 700; }
+.cal-day.today { border-color: var(--primary); }
+.cal-day.selected { outline: 2px solid var(--text); outline-offset: 1px; }
+.cal-circle { width: 100%; max-width: 40px; height: auto; display: block; }
+.cal-circle.small { width: 20px; flex: none; }
+.cal-circle .half { fill: var(--cat, var(--border)); }
+.cal-circle .half.empty { fill: var(--grid); }
+.cal-circle .split { stroke: var(--surface); stroke-width: 2; }
+.cal-circle .other { fill: var(--muted); }
+.cal-legend { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin-top: .6rem; font-size: .8rem; color: var(--muted); }
+.cal-legend > span { display: inline-flex; align-items: center; gap: .3rem; }
+.cal-legend-cats { flex-wrap: wrap; row-gap: .2rem; }
+.cal-legend-cats .cat-dot { width: .6rem; height: .6rem; margin-inline-start: .35rem; }
+.cal-legend-cats .cat-dot:first-child { margin-inline-start: 0; }
+.cal-detail { display: flex; flex-direction: column; gap: .5rem; scroll-margin-top: calc(var(--topbar-h) + 12px); }
+.cal-detail-head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
+.cal-detail h4 { margin: 0; font-size: .95rem; }
+.link-btn { appearance: none; border: 0; background: none; padding: .25rem 0; font: inherit; font-size: .85rem; color: var(--primary); cursor: pointer; text-decoration: underline; }
+
+/* 匯入 */
+.file-pick { display: flex; flex-direction: column; gap: .35rem; margin-top: .75rem; font-size: .85rem; color: var(--muted); }
+.file-pick input { padding: .4rem; font-size: .85rem; min-height: 0; }
+.step { font-weight: 600; margin: 1.25rem 0 .5rem; }
+.ai-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.ai-buttons .btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; flex: 1 1 auto; }
+
 /* 匯入預覽 */
 .import-preview:empty { display: none; }
 .import-preview { margin-top: 1rem; display: flex; flex-direction: column; gap: .4rem; }
@@ -604,6 +654,7 @@ body[data-view="stats"] .fab { display: grid; place-items: center; }
   .view-title { display: block; margin: 0; }
 
   body[data-view="settings"] main { max-width: 760px; }
+  .cal-layout { grid-template-columns: minmax(340px, 460px) 1fr; }
   body[data-view="stats"] main { max-width: 1120px; }
   .stat-grid { grid-template-columns: 1fr 1fr; align-items: start; }
 
@@ -620,7 +671,7 @@ body[data-view="stats"] .fab { display: grid; place-items: center; }
   main { max-width: none; padding: 0; }
   .card, .tile { border-color: #ccc; break-inside: avoid; box-shadow: none; }
   .stat-grid { grid-template-columns: 1fr 1fr; }
-  .chart, .prop-fill, .legend .key, .cat-dot, .cat-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .chart, .prop-fill, .legend .key, .cat-dot, .cat-badge, .cal-circle { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .warning { border: 1px solid #c77; background: #fff; color: #111; }
 }
 
