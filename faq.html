@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'">
+  <title>常見問題 FAQ｜BPack</title>
+  <meta name="description" content="BPack 常見問題：資料存在哪裡、一定要登入嗎、怎麼正確量血壓、顏色代表什麼、怎麼補登、怎麼給醫師看、怎麼刪除資料。 BPack FAQ: where your data lives, signing in, how to measure correctly, what the colours mean, backfilling, sharing with your doctor, deleting data.">
+  <link rel="canonical" href="https://bear1110.github.io/bpack/faq.html">
+  <meta property="og:image" content="https://bear1110.github.io/bpack/icons/og-image.png">
+  <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- 結構化資料：FAQPage（只是資料區塊，不會被執行） -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "BPack 是什麼？", "acceptedAnswer": { "@type": "Answer", "text": "免費的血壓日記網站。輸入收縮壓、舒張壓與心跳就能記錄，查看每日與每週平均、趨勢圖，並列印看診摘要給醫師。紀錄存在你自己的 Google 雲端硬碟。" } },
+      { "@type": "Question", "name": "我的資料存在哪裡？網站作者看得到嗎？", "acceptedAnswer": { "@type": "Answer", "text": "登入後，紀錄存在你自己 Google 雲端硬碟裡的一份試算表；尚未同步的紀錄暫存在你的瀏覽器。本網站沒有後端伺服器，作者看不到任何人的資料。" } },
+      { "@type": "Question", "name": "一定要登入嗎？", "acceptedAnswer": { "@type": "Answer", "text": "不用登入也能記錄，但紀錄只會存在這台裝置的瀏覽器裡，清除瀏覽器資料、換手機或換瀏覽器就會遺失。建議用 Google 登入備份。" } },
+      { "@type": "Question", "name": "怎麼正確量血壓？", "acceptedAnswer": { "@type": "Answer", "text": "量之前靜坐 5 分鐘，背有靠、雙腳平放，手臂放在與心臟同高的位置；量前 30 分鐘不要喝咖啡、運動或抽菸。建議早上起床後吃藥前、晚上睡前各量一次，每次量兩遍、間隔一分鐘，連續 7 天。" } },
+      { "@type": "Question", "name": "顏色和分級代表什麼？", "acceptedAnswer": { "@type": "Answer", "text": "依常見指引的門檻：居家血壓低於 120/80 為正常，120–129 且舒張壓低於 80 為偏高，130/80 以上為高血壓第一期，140/90 以上為第二期，180/120 以上請立即就醫；低於 90/60 為偏低。這只是參考，不是診斷。" } },
+      { "@type": "Question", "name": "怎麼把紀錄給醫師看？", "acceptedAnswer": { "@type": "Answer", "text": "到「統計」→「看診摘要」，按「列印／存成 PDF」；也可以直接分享你的 Google 試算表。" } },
+      { "@type": "Question", "name": "怎麼刪除所有資料？", "acceptedAnswer": { "@type": "Answer", "text": "到「設定」→「危險區域」→「清空所有紀錄」。也可以直接刪除雲端硬碟中的試算表，並在 Google 帳戶撤銷本網站的存取權。" } }
+    ]
+  }
+  </script>
+</head>
+<body class="doc-page">
+  <main>
+    <p><a href="./" class="brand-link"><img src="icons/logo.png" alt="" width="28" height="28">bpack</a></p>
+
+    <article class="card doc faq">
+      <h1>常見問題</h1>
+
+      <details open>
+        <summary>BPack 是什麼？</summary>
+        <p>免費的血壓日記網站。量完血壓後輸入收縮壓、舒張壓和心跳（心跳可以不填），按一下就記錄好；時間預設是現在，也可以改成之前的時間補登。平常可以看每日與每週平均、趨勢圖，看診時列印摘要給醫師。紀錄存在你自己的 Google 雲端硬碟，沒有廣告。</p>
+      </details>
+      <details>
+        <summary>為什麼叫 BPack？</summary>
+        <p>BPack 是 BP（blood pressure，血壓）加上 ack（acknowledge，確認收到）。血壓如果沒有被好好「ack」——被定期量、被記下來——醫師就很難判斷藥有沒有效、該不該調整。所以我們希望大家把每一次量到的數字都記下來。</p>
+      </details>
+      <details>
+        <summary>我的資料存在哪裡？網站作者看得到嗎？</summary>
+        <p>登入後，紀錄存在你自己 Google 雲端硬碟裡的一份試算表（「BPack 血壓紀錄」）；尚未同步的紀錄暫存在你目前使用的瀏覽器。本網站沒有後端伺服器，<strong>作者看不到任何人的資料</strong>，也沒有任何瀏覽量統計或追蹤。詳見<a href="privacy.html">隱私權政策</a>。</p>
+      </details>
+      <details>
+        <summary>一定要登入嗎？</summary>
+        <p>不用登入也能記錄。但沒登入時，紀錄只存在這台裝置的瀏覽器裡：<strong>清除瀏覽器資料、換手機或換瀏覽器，紀錄就會不見</strong>。建議用 Google 登入，紀錄會備份到你自己的雲端硬碟。</p>
+      </details>
+      <details>
+        <summary>網站會看到我雲端硬碟裡的其他檔案嗎？</summary>
+        <p>不會。登入時授權的是 Google 的 <code>drive.file</code> 權限，只能存取本網站自己建立的那份試算表。</p>
+      </details>
+      <details>
+        <summary>換手機或換電腦怎麼辦？</summary>
+        <p>在新裝置打開網站，用同一個 Google 帳號登入，紀錄就會從你的試算表讀回來。</p>
+      </details>
+      <details>
+        <summary>沒有網路的時候可以記錄嗎？</summary>
+        <p>可以。紀錄會先存在瀏覽器裡，連上網路後自動同步到試算表。</p>
+      </details>
+      <details>
+        <summary>怎麼加到手機主畫面？</summary>
+        <p>按畫面上方的「↓」按鈕。Android 和電腦版 Chrome／Edge 會直接安裝；iPhone 請在 Safari 點「分享」→「加入主畫面」。加到主畫面後，打開就像一般 App 一樣。</p>
+      </details>
+      <details>
+        <summary>怎麼正確量血壓？</summary>
+        <p>量之前先靜坐 5 分鐘，背有靠、雙腳平放地面、不要說話；袖帶綁在上臂，手臂放在桌上、與心臟同高。量前 30 分鐘不要喝咖啡或茶、運動、抽菸。</p>
+        <p>醫師最常建議的習慣是「722」：連續 <strong>7</strong> 天，每天早晚 <strong>2</strong> 個時段（早上起床後、上廁所後、吃藥前；晚上睡前），每個時段量 <strong>2</strong> 次、間隔一分鐘。這樣得到的平均值最能反映你真正的血壓。</p>
+      </details>
+      <details>
+        <summary>顏色和分級代表什麼？</summary>
+        <p>本網站依常見指引的門檻替每筆紀錄標上顏色（以居家血壓為準）：</p>
+        <ul>
+          <li><strong>正常</strong>：低於 120/80</li>
+          <li><strong>偏高</strong>：收縮壓 120–129，且舒張壓低於 80</li>
+          <li><strong>高血壓第一期</strong>：收縮壓 130–139 或舒張壓 80–89</li>
+          <li><strong>高血壓第二期</strong>：收縮壓 140 以上或舒張壓 90 以上</li>
+          <li><strong>請立即就醫</strong>：收縮壓 180 以上或舒張壓 120 以上</li>
+          <li><strong>偏低</strong>：低於 90/60</li>
+        </ul>
+        <p>居家血壓的治療目標一般是低於 130/80。這些分級只是參考，不是診斷；單次量到偏高不必緊張，重點是一段時間的平均。<strong>請勿未經醫師討論就自行調整藥物。</strong></p>
+      </details>
+      <details>
+        <summary>怎麼把紀錄給醫師看？</summary>
+        <p>到「統計」→「看診摘要」，選好期間後按「列印／存成 PDF」。摘要包含這段期間的平均血壓、早晚平均、各分級的比例與趨勢圖。也可以直接分享你的 Google 試算表給醫師。</p>
+      </details>
+      <details>
+        <summary>忘了記，可以補登之前量的血壓嗎？</summary>
+        <p>可以。在記錄頁按時間那一列，就可以改成之前的日期和時間再儲存。已經存好的紀錄也可以在「紀錄」頁點開修改時間或數值。</p>
+      </details>
+      <details>
+        <summary>怎麼刪除所有資料？</summary>
+        <p>到「設定」→「危險區域」→「清空所有紀錄」。也可以直接刪除雲端硬碟中的試算表，並在 <a href="https://myaccount.google.com/permissions" rel="noopener">Google 帳戶的第三方存取權</a>頁面撤銷本網站的授權。</p>
+      </details>
+      <details>
+        <summary>這是醫療器材嗎？</summary>
+        <p>不是。本網站只是記錄工具，分級與統計不構成醫療診斷。如果量到 180/120 以上，或出現胸痛、呼吸困難、劇烈頭痛、單側無力、說話困難等症狀，請立即就醫。</p>
+      </details>
+      <details>
+        <summary>有問題或建議要找誰？</summary>
+        <p>歡迎到 <a href="https://github.com/Bear1110/bpack/issues" rel="noopener">GitHub</a> 提出 issue。</p>
+      </details>
+    </article>
+
+    <article class="card doc faq" lang="en">
+      <h1>FAQ</h1>
+      <details>
+        <summary>What is BPack?</summary>
+        <p>A free blood-pressure diary. After you measure, type in systolic, diastolic and pulse (pulse is optional) and tap once to save; the time defaults to now and can be changed to backfill an earlier reading. See daily and weekly averages and a trend chart, and print a summary for your doctor. Your entries are stored in your own Google Drive. No ads.</p>
+      </details>
+      <details>
+        <summary>Why “BPack”?</summary>
+        <p>BPack = BP (blood pressure) + ack (acknowledge). Blood pressure that isn't acked — measured regularly and written down — makes it hard for your doctor to tell whether treatment is working. So we hope you'll record every reading.</p>
+      </details>
+      <details>
+        <summary>Where is my data? Can the author see it?</summary>
+        <p>Once you sign in, entries are stored in a spreadsheet in your own Google Drive ("BPack Blood Pressure Log"); entries not yet synced are kept in your browser. There is no backend server — <strong>the author cannot see anyone's data</strong>, and there are no analytics or tracking of any kind. See the <a href="privacy.html">privacy policy</a>.</p>
+      </details>
+      <details>
+        <summary>Do I have to sign in?</summary>
+        <p>No — you can log right away. But without signing in, entries live only in this browser on this device: <strong>clearing browser data or switching phones or browsers will lose them</strong>. Sign in with Google to back them up to your own Drive.</p>
+      </details>
+      <details>
+        <summary>Can the site see other files in my Drive?</summary>
+        <p>No. It uses Google's <code>drive.file</code> permission, which only allows access to the spreadsheet the site created.</p>
+      </details>
+      <details>
+        <summary>What if I switch phones or computers?</summary>
+        <p>Open the site on the new device and sign in with the same Google account; your entries are read back from your spreadsheet.</p>
+      </details>
+      <details>
+        <summary>Can I log entries offline?</summary>
+        <p>Yes. Entries are saved in the browser first and synced to your spreadsheet when you're back online.</p>
+      </details>
+      <details>
+        <summary>How do I add it to my home screen?</summary>
+        <p>Tap the “↓” button at the top. Android and desktop Chrome/Edge install it directly; on iPhone, tap Share → Add to Home Screen in Safari.</p>
+      </details>
+      <details>
+        <summary>How do I measure correctly?</summary>
+        <p>Sit quietly for 5 minutes first, back supported, feet flat on the floor, without talking; cuff on the upper arm, arm resting on a table at heart level. No caffeine, exercise or smoking in the 30 minutes before.</p>
+        <p>The habit doctors most often recommend is “722”: <strong>7</strong> days in a row, <strong>2</strong> times a day (morning after waking and using the toilet, before medication; evening before bed), <strong>2</strong> readings each time one minute apart. The average of these readings reflects your true blood pressure best.</p>
+      </details>
+      <details>
+        <summary>What do the colours and categories mean?</summary>
+        <p>Each reading is coloured using common guideline thresholds for home blood pressure:</p>
+        <ul>
+          <li><strong>Normal</strong>: below 120/80</li>
+          <li><strong>Elevated</strong>: systolic 120–129 and diastolic below 80</li>
+          <li><strong>High, stage 1</strong>: systolic 130–139 or diastolic 80–89</li>
+          <li><strong>High, stage 2</strong>: systolic 140 or higher, or diastolic 90 or higher</li>
+          <li><strong>Seek care now</strong>: systolic 180 or higher, or diastolic 120 or higher</li>
+          <li><strong>Low</strong>: below 90/60</li>
+        </ul>
+        <p>The usual home treatment target is below 130/80. These categories are a reference, not a diagnosis; one high reading is not cause for alarm — what matters is the average over time. <strong>Never change your medication based on these numbers without talking to your doctor.</strong></p>
+      </details>
+      <details>
+        <summary>How do I show my records to a doctor?</summary>
+        <p>Go to Stats → Doctor summary, choose a period and tap “Print / save as PDF”. The summary includes the period's average, morning and evening averages, the share of readings in each category and the trend chart. You can also share your Google spreadsheet directly.</p>
+      </details>
+      <details>
+        <summary>I forgot to log one — can I add an earlier reading?</summary>
+        <p>Yes. On the Log page, tap the time row to change it to an earlier date and time before saving. You can also open any saved entry on the History page and edit its time or values.</p>
+      </details>
+      <details>
+        <summary>How do I delete all my data?</summary>
+        <p>Settings → Danger zone → Delete all entries. You can also delete the spreadsheet from your Drive and revoke the site's access on your <a href="https://myaccount.google.com/permissions" rel="noopener">Google Account</a>.</p>
+      </details>
+      <details>
+        <summary>Is this a medical device?</summary>
+        <p>No. It's a record-keeping tool; categories and statistics are not a diagnosis. If a reading is 180/120 or higher, or you have chest pain, shortness of breath, a severe headache, weakness or trouble speaking, seek medical care immediately.</p>
+      </details>
+      <details>
+        <summary>Questions or suggestions?</summary>
+        <p>Please open an issue on <a href="https://github.com/Bear1110/bpack/issues" rel="noopener">GitHub</a>.</p>
+      </details>
+    </article>
+
+    <footer class="site-footer">
+      <nav><a href="privacy.html">隱私權政策 Privacy</a> · <a href="terms.html">服務條款 Terms</a> · <a href="faq.html">常見問題 FAQ</a> · <a href="https://github.com/Bear1110/bpack" class="footer-gh" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.08 0 4.41-2.69 5.39-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg></a></nav>
+      <p>© 2026 BPack. 保留所有權利。All rights reserved.</p>
+    </footer>
+  </main>
+</body>
+</html>

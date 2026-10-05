@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- BPack：抱著愛心的熊熊（沿用 Headack 熊熊的畫法與配色；愛心＝血壓／心臟） -->
+  <defs>
+    <clipPath id="card"><rect width="512" height="512" rx="104"/></clipPath>
+  </defs>
+  <g clip-path="url(#card)">
+    <rect width="512" height="512" fill="#fbeedd"/>
+    <!-- 身體與左耳、右耳 -->
+    <ellipse cx="150" cy="530" rx="175" ry="78" fill="#b8744d"/>
+    <circle cx="140" cy="150" r="74" fill="#b8744d"/>
+    <circle cx="150" cy="160" r="40" fill="#8f5536"/>
+    <circle cx="424" cy="214" r="70" fill="#b8744d"/>
+    <circle cx="432" cy="222" r="35" fill="#8f5536"/>
+    <!-- 頭 -->
+    <ellipse cx="236" cy="336" rx="212" ry="186" fill="#c68054"/>
+    <!-- 腮紅 -->
+    <ellipse cx="118" cy="330" rx="31" ry="21" fill="#ec8b6c" opacity=".85"/>
+    <ellipse cx="368" cy="382" rx="29" ry="19" fill="#ec8b6c" opacity=".85"/>
+    <!-- 嘴部、鼻子、微笑 -->
+    <ellipse cx="238" cy="372" rx="80" ry="64" fill="#f6d9b9"/>
+    <ellipse cx="240" cy="352" rx="25" ry="18" fill="#4b2b1e"/>
+    <path d="M212 390 q28 22 56 0" fill="none" stroke="#4b2b1e" stroke-width="9" stroke-linecap="round"/>
+    <!-- 眉毛與眼睛（兩眼都張開、放鬆） -->
+    <g fill="none" stroke="#4b2b1e" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M152 266 q24 -10 50 -2"/>
+      <path d="M298 292 q26 -8 50 2"/>
+    </g>
+    <ellipse cx="180" cy="308" rx="13" ry="18" fill="#3c2418"/>
+    <ellipse cx="322" cy="332" rx="13" ry="18" fill="#3c2418"/>
+    <circle cx="185" cy="301" r="4" fill="#fff"/>
+    <circle cx="327" cy="325" r="4" fill="#fff"/>
+    <!-- 愛心（手抱著，手疊在愛心下緣） -->
+    <path d="M392 350 c-24 -30 -72 -16 -72 24 c0 34 42 64 72 90 c30 -26 72 -56 72 -90 c0 -40 -48 -54 -72 -24 z" fill="#ef5a6a"/>
+    <ellipse cx="362" cy="360" rx="12" ry="7" transform="rotate(-30 362 360)" fill="#fff" opacity=".75"/>
+    <!-- 托著愛心的手 -->
+    <ellipse cx="386" cy="466" rx="58" ry="62" transform="rotate(-14 386 466)" fill="#b8744d"/>
+    <ellipse cx="382" cy="460" rx="50" ry="54" transform="rotate(-14 382 460)" fill="#c27b50"/>
+  </g>
+</svg>
