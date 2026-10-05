@@ -223,6 +223,20 @@ body[data-view="settings"] #view-settings { display: flex; }
 .crisis-note { border: 1px solid var(--danger); font-weight: 600; }
 .crisis-note[hidden] { display: none; }
 
+/* 今天的血壓藥：還沒吃 / 吃了 */
+.meds-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin: .75rem 0 .25rem; }
+.meds-label { display: inline-flex; align-items: center; gap: .35rem; font-weight: 600; }
+.meds-label .icon { width: 18px; height: 18px; color: var(--primary); }
+.meds-label small { font-weight: 400; color: var(--muted); }
+.seg.meds-seg { flex: 0 0 auto; }
+.seg.meds-seg button { min-width: 5.2rem; padding-inline: 1rem; font-size: .95rem; white-space: nowrap; }
+.meds-name[hidden] { display: none; }
+.tag.med { border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); color: var(--primary); font-weight: 600; }
+.tag.med .icon { width: 13px; height: 13px; margin-inline-end: .25rem; }
+.tag.med.before { color: var(--muted); font-weight: 400; border-style: dashed; }
+.cal-circle .pill rect { fill: var(--surface); stroke: var(--text); stroke-width: 1.4; }
+.cal-circle .pill line { stroke: var(--text); stroke-width: 1.2; }
+
 /* 分級顏色：色點、文字、膠囊 */
 .cat-dot { display: inline-block; width: .8rem; height: .8rem; border-radius: 50%; flex: none; background: var(--muted); }
 .cat-low { --cat: var(--cat-low); }

@@ -28,6 +28,9 @@ export default {
   'error.popup': '彈出視窗被擋住了，請允許本網站開啟彈出視窗',
 
   // 記錄
+  'log.medsYes': '吃了',
+  'log.medsNo': '還沒吃',
+  'log.medsToday': '今天的血壓藥',
   'log.title': '量好了，記下來',
   'log.systolic': '收縮壓',
   'log.systolicHint': '高壓',
@@ -78,6 +81,7 @@ export default {
   'period.morning': '早上',
   'period.afternoon': '下午',
   'period.evening': '晚上',
+  'opt.tags.before_meds': '吃藥前',
   'opt.arm.left': '左手',
   'opt.arm.right': '右手',
   'opt.tags.after_meds': '吃藥後',
@@ -103,6 +107,11 @@ export default {
   'undo.undo': '復原',
 
   // 統計
+  'st.kfAfter': '吃藥後平均',
+  'st.kfBefore': '吃藥前平均',
+  'st.medsNote': '只算有標記吃藥前／後的紀錄。',
+  'st.colMeds': '服藥',
+  'st.medsTitle': '吃藥前與吃藥後',
   'st.range': '期間',
   'st.r7': '7 天',
   'st.r30': '30 天',
@@ -172,6 +181,10 @@ export default {
   'ai.preview': '查看實際會交給 AI 的內容',
 
   // 設定
+  'settings.medsHelp': '開啟後，記錄卡片上會多一組「今天的血壓藥：還沒吃／吃了」。點過「吃了」之後，當天的紀錄都算吃藥後，隔天自動回到「還沒吃」。吃藥前（早上）的血壓是醫師最想看的數字。',
+  'settings.medsName': '藥名（選填，會出現在看診摘要）',
+  'settings.medsOn': '我有在吃血壓藥',
+  'settings.meds': '血壓藥',
   'settings.account': '帳號',
   'settings.openSheet': '在 Google 試算表中開啟',
   'settings.groupPrefs': '偏好設定',
@@ -239,6 +252,7 @@ export default {
   'install.android': '打開瀏覽器選單（⋮），選擇「加到主畫面」或「安裝應用程式」。',
   'install.desktop': '按 {key} 把這一頁加入書籤，或使用網址列的安裝圖示。',
   'install.done': '已加到主畫面',
+  'cal.legendMeds': '小藥丸：那天有吃藥',
   'cal.addForDay': '補登這一天',
   'cal.showMonth': '顯示整個月',
   'cal.noEntriesMonth': '這個月沒有紀錄',

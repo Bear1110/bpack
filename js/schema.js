@@ -32,7 +32,8 @@ export const NUMERIC_FIELDS = ['systolic', 'diastolic', 'pulse'];
 export const OPTIONS = {
   arm: ['left', 'right'],
   // 情境：會影響數值判讀的常見情況
-  tags: ['after_meds', 'after_exercise', 'unwell', 'poor_sleep', 'stress', 'after_caffeine'],
+  // before_meds / after_meds：這一次是在吃今天的血壓藥之前或之後量的（有在吃藥的人由記錄卡片的開關自動帶入）
+  tags: ['before_meds', 'after_meds', 'after_exercise', 'unwell', 'poor_sleep', 'stress', 'after_caffeine'],
 };
 
 // 合理的輸入範圍（超出就擋下來，避免打錯一個 0）

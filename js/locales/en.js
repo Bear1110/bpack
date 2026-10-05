@@ -28,6 +28,9 @@ export default {
   'error.popup': 'The pop-up was blocked. Please allow pop-ups for this site.',
 
   // 記錄
+  'log.medsYes': 'Taken',
+  'log.medsNo': 'Not yet',
+  'log.medsToday': 'Today\'s BP medication',
   'log.title': 'Record a reading',
   'log.systolic': 'Systolic',
   'log.systolicHint': 'top number',
@@ -78,6 +81,7 @@ export default {
   'period.morning': 'Morning',
   'period.afternoon': 'Afternoon',
   'period.evening': 'Evening',
+  'opt.tags.before_meds': 'Before medication',
   'opt.arm.left': 'Left arm',
   'opt.arm.right': 'Right arm',
   'opt.tags.after_meds': 'After medication',
@@ -103,6 +107,11 @@ export default {
   'undo.undo': 'Undo',
 
   // 統計
+  'st.kfAfter': 'After medication',
+  'st.kfBefore': 'Before medication',
+  'st.medsNote': 'Only readings tagged before / after medication are counted.',
+  'st.colMeds': 'Medication',
+  'st.medsTitle': 'Before vs after medication',
   'st.range': 'Period',
   'st.r7': '7 days',
   'st.r30': '30 days',
@@ -172,6 +181,10 @@ export default {
   'ai.preview': 'See exactly what will be shared',
 
   // 設定
+  'settings.medsHelp': 'When on, the Log card gets a “Today\'s BP medication: Not yet / Taken” switch. Once you tap Taken, readings for the rest of that day count as after medication; it resets to Not yet the next morning. The before-medication (morning) reading is the one doctors most want to see.',
+  'settings.medsName': 'Medication name (optional, shown in the doctor summary)',
+  'settings.medsOn': 'I take blood pressure medication',
+  'settings.meds': 'Blood pressure medication',
   'settings.account': 'Account',
   'settings.openSheet': 'Open in Google Sheets',
   'settings.groupPrefs': 'Preferences',
@@ -239,6 +252,7 @@ export default {
   'install.android': 'Open the browser menu (⋮) and choose "Add to Home screen" or "Install app".',
   'install.desktop': 'Press {key} to bookmark this page, or use the install icon in the address bar.',
   'install.done': 'Added to home screen',
+  'cal.legendMeds': 'Pill: medication taken that day',
   'cal.addForDay': 'Add a reading for this day',
   'cal.showMonth': 'Show whole month',
   'cal.noEntriesMonth': 'No readings this month',

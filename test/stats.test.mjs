@@ -7,7 +7,7 @@ import {
   classify, onTarget, periodOf, average, groupByDay, dailyAverages, inRange, summarize, sevenTwoTwo, localDate,
 } from '../js/stats.js';
 
-const rec = (time, systolic, diastolic, pulse = null) => ({ id: `${time}-${systolic}`, time, systolic, diastolic, pulse });
+const rec = (time, systolic, diastolic, pulse = null, extra = {}) => ({ id: `${time}-${systolic}`, time, systolic, diastolic, pulse: typeof pulse === 'object' && pulse ? null : pulse, tags: [], ...(typeof pulse === 'object' && pulse ? pulse : extra) });
 
 // ---------- 分級 ----------
 
@@ -158,4 +158,25 @@ test('dayHalves：早晚各自平均並分級，下午算成小點', () => {
   assert.equal(d6.morning, null);
   assert.equal(d6.evening.cat, 'stage2');
   assert.equal(d6.other, 0);
+});
+
+// ---------- 吃藥前／後 ----------
+
+import { splitByMeds } from '../js/stats.js';
+
+test('dayHalves 標出當天有吃藥；splitByMeds 分開平均', () => {
+  const records = [
+    rec('2026-10-05T07:00', 138, 88, { tags: ['before_meds'] }),
+    rec('2026-10-05T21:00', 124, 80, { tags: ['after_meds'] }),
+    rec('2026-10-06T07:00', 136, 86, { tags: ['before_meds'] }),
+    rec('2026-10-07T07:00', 130, 84), // 沒標記
+  ];
+  const halves = dayHalves(records);
+  assert.equal(halves.get('2026-10-05').meds, true);
+  assert.equal(halves.get('2026-10-06').meds, false);
+  const m = splitByMeds(records);
+  assert.equal(m.any, true);
+  assert.deepEqual([m.before.systolic, m.before.diastolic, m.before.n], [137, 87, 2]);
+  assert.deepEqual([m.after.systolic, m.after.n], [124, 1]);
+  assert.equal(splitByMeds([rec('2026-10-07T07:00', 130, 84)]).any, false);
 });

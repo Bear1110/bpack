@@ -2,7 +2,7 @@
 // - 我的趨勢：平均、達標比例、每日趨勢圖、早晚比較、各級別分布
 // - 看診摘要：醫師會看的數據（期間、次數、平均、早晚平均、達標與偏高比例、最高最低），可列印
 
-import { CATEGORIES, PERIODS, classify, onTarget, inRange, dailyAverages, summarize, localDate } from './stats.js';
+import { CATEGORIES, PERIODS, classify, inRange, dailyAverages, summarize, splitByMeds, localDate } from './stats.js';
 import { lineChart, tableView, proportionList, attachTooltips, applyProportions } from './charts.js';
 import { icon } from './icons.js';
 
@@ -111,6 +111,19 @@ export function createStatsView(root, { t, getLang, getRecords, onAiAnalysis }) 
       </table></div>`;
   }
 
+  // 吃藥前 / 吃藥後（只有有標記時才顯示）
+  function medsTable(records) {
+    const m = splitByMeds(records);
+    if (!m.any) return '';
+    const row = (label, a) => (a.n ? `<tr><th scope="row">${esc(label)}</th><td class="num cat-text-${classify(a.systolic, a.diastolic)}">${bp(a)}</td><td class="num">${a.pulse ?? '—'}</td><td class="num">${a.n}</td></tr>` : '');
+    return `
+      <div class="table-wrap"><table>
+        <thead><tr><th>${esc(t('st.colMeds'))}</th><th class="num">${esc(t('st.avg'))}</th><th class="num">${esc(t('st.avgPulse'))}</th><th class="num">${esc(t('st.colN'))}</th></tr></thead>
+        <tbody>${row(t('opt.tags.before_meds'), m.before)}${row(t('opt.tags.after_meds'), m.after)}</tbody>
+      </table></div>
+      <p class="muted small">${esc(t('st.medsNote'))}</p>`;
+  }
+
   function deltaHtml(cur, prev) {
     if (cur == null || prev == null) return '';
     const d = cur - prev;
@@ -137,13 +150,15 @@ export function createStatsView(root, { t, getLang, getRecords, onAiAnalysis }) 
       <div class="stat-grid">
         ${card(t('st.periodTitle'), periodTable(s))}
         ${card(t('st.categoryTitle'), categoryList(s))}
-      </div>`;
+      </div>
+      ${medsTable(records) ? card(t('st.medsTitle'), medsTable(records)) : ''}`;
   }
 
   // ---------- 看診摘要 ----------
 
   function doctorHtml(records, range, s) {
     const kf = (label, value) => `<div class="kf"><dt>${esc(label)}</dt><dd>${value}</dd></div>`;
+    const meds = splitByMeds(records);
     const high = records.filter((r) => classify(r.systolic, r.diastolic) === 'stage2' || classify(r.systolic, r.diastolic) === 'crisis').length;
     const reading = (r) => (r ? esc(`${r.systolic}/${r.diastolic}（${dateText(r.time.slice(0, 10))}）`) : `<span class="muted">${esc(t('st.notRecorded'))}</span>`);
     const per = (p) => (s.byPeriod[p].n ? esc(`${bp(s.byPeriod[p])}（${t('st.nOf', { n: s.byPeriod[p].n, total: s.n })}）`) : `<span class="muted">${esc(t('st.notRecorded'))}</span>`);
@@ -167,6 +182,8 @@ export function createStatsView(root, { t, getLang, getRecords, onAiAnalysis }) 
           ${kf(t('st.kfHighest'), reading(s.highest))}
           ${kf(t('st.kfLowest'), reading(s.lowest))}
           ${kf(t('st.kfPulse'), s.avg.pulse != null ? esc(String(s.avg.pulse)) : `<span class="muted">${esc(t('st.notRecorded'))}</span>`)}
+          ${meds.any ? kf(t('st.kfBefore'), meds.before.n ? esc(`${bp(meds.before)}（${t('st.nOf', { n: meds.before.n, total: s.n })}）`) : `<span class="muted">${esc(t('st.notRecorded'))}</span>`) : ''}
+          ${meds.any ? kf(t('st.kfAfter'), meds.after.n ? esc(`${bp(meds.after)}（${t('st.nOf', { n: meds.after.n, total: s.n })}）`) : `<span class="muted">${esc(t('st.notRecorded'))}</span>`) : ''}
         </dl>`)}
       ${card(t('st.trendTitle'), trendChart(records, range))}
       ${card(t('st.categoryTitle'), categoryList(s))}

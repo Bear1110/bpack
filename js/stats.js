@@ -138,8 +138,8 @@ export function sevenTwoTwo(records, today) {
 
 // ---------- 日曆 ----------
 
-// 每一天的早／晚平均（給日曆的上下半圓用）與其他時段的筆數。
-// Map(day → { morning: { systolic, diastolic, n, cat } | null, evening: ..., other: n })
+// 每一天的早／晚平均（給日曆的上下半圓用）、其他時段的筆數、當天有沒有吃藥。
+// Map(day → { morning: { systolic, diastolic, n, cat } | null, evening: ..., other: n, meds: boolean })
 export function dayHalves(records) {
   const map = new Map();
   for (const [day, list] of groupByDay(records)) {
@@ -147,7 +147,19 @@ export function dayHalves(records) {
       const a = average(list.filter((r) => periodOf(r.time) === p));
       return a.n ? { systolic: a.systolic, diastolic: a.diastolic, n: a.n, cat: classify(a.systolic, a.diastolic) } : null;
     };
-    map.set(day, { morning: half('morning'), evening: half('evening'), other: list.filter((r) => periodOf(r.time) === 'afternoon').length });
+    map.set(day, {
+      morning: half('morning'),
+      evening: half('evening'),
+      other: list.filter((r) => periodOf(r.time) === 'afternoon').length,
+      meds: list.some((r) => r.tags?.includes('after_meds')),
+    });
   }
   return map;
+}
+
+// 吃藥前／吃藥後的平均（只算有標記的紀錄）
+export function splitByMeds(records) {
+  const before = average(records.filter((r) => r.tags?.includes('before_meds')));
+  const after = average(records.filter((r) => r.tags?.includes('after_meds')));
+  return { before, after, any: before.n > 0 || after.n > 0 };
 }

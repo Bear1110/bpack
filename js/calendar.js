@@ -24,6 +24,7 @@ export function circleSvg(halves, { small = false } = {}) {
       ${half(halves?.morning, true)}${half(halves?.evening, false)}
       <line class="split" x1="4" y1="20" x2="36" y2="20"/>
       ${halves?.other ? '<circle class="other" cx="20" cy="37.5" r="2.2"/>' : ''}
+      ${halves?.meds ? '<g class="pill" transform="translate(31 31) rotate(-35)"><rect x="-5" y="-2.6" width="10" height="5.2" rx="2.6"/><line x1="0" y1="-2.6" x2="0" y2="2.6"/></g>' : ''}
     </svg>`;
 }
 
@@ -35,6 +36,7 @@ function dayLabel(t, dayFmt, date, h) {
   if (h.morning) parts.push(`${t('period.morning')} ${h.morning.systolic}/${h.morning.diastolic} ${t(`cat.${h.morning.cat}`)}`);
   if (h.evening) parts.push(`${t('period.evening')} ${h.evening.systolic}/${h.evening.diastolic} ${t(`cat.${h.evening.cat}`)}`);
   if (h.other) parts.push(`${t('period.afternoon')} ${h.other}`);
+  if (h.meds) parts.push(t('opt.tags.after_meds'));
   return `${d}: ${parts.join(', ')}`;
 }
 

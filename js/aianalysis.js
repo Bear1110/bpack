@@ -30,7 +30,7 @@ function entryLine(r, includeNotes) {
 }
 
 // 回傳 { prompt, count, from, to }；records 取最近 days 天內的紀錄，依時間由舊到新排列
-export function buildAnalysisPrompt(records, { days, preset, lang, includeNotes, today = localDate(new Date()) }) {
+export function buildAnalysisPrompt(records, { days, preset, lang, includeNotes, medName = '', today = localDate(new Date()) }) {
   const from = localDate(new Date(new Date(`${today}T00:00`).getTime() - (days - 1) * 86400000));
   const recent = records
     .filter((r) => r.time && Number.isFinite(r.systolic) && Number.isFinite(r.diastolic) && r.time.slice(0, 10) >= from && r.time.slice(0, 10) <= today)
@@ -38,6 +38,7 @@ export function buildAnalysisPrompt(records, { days, preset, lang, includeNotes,
   if (!recent.length) return { prompt: '', count: 0, from, to: today };
   const prompt = `I keep a home blood pressure diary. Below are my ${recent.length} readings from the last ${days} days (${from} to ${today}), oldest first.
 Format of each line: date time, period (M = morning, A = afternoon, E = evening), systolic/diastolic in mmHg, p = pulse, L/R = arm, situation tags, notes.
+Tags before_meds / after_meds mean the reading was taken before / after that day's blood pressure medication${medName ? ` (${medName})` : ''}; compare the two where possible.
 
 Task: ${TASKS[preset] ?? TASKS.overview}
 

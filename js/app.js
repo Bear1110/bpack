@@ -155,6 +155,37 @@ function emptyRecord() {
   return { id: newId(), time: nowLocal(), systolic: null, diastolic: null, pulse: null, arm: '', tags: [], notes: '' };
 }
 
+// ---------- 血壓藥 ----------
+//
+// 「我有在吃血壓藥」是長期設定；「今天吃了沒」以天為單位記住：
+// 早上量時是「還沒吃」，點過「吃了」之後當天的紀錄都算吃藥後，隔天自動回到「還沒吃」。
+// 吃藥前（早上）的血壓是醫師最想看的數字，所以不能只是記住上一次的勾選。
+
+const MEDS_KEY = 'bp.meds';
+const MEDS_TODAY_KEY = 'bp.medsToday';
+const MED_TAGS = ['before_meds', 'after_meds'];
+
+function getMedsPref() {
+  try { return { on: false, name: '', ...JSON.parse(localStorage.getItem(MEDS_KEY) || '{}') }; } catch { return { on: false, name: '' }; }
+}
+function setMedsPref(patch) {
+  try { localStorage.setItem(MEDS_KEY, JSON.stringify({ ...getMedsPref(), ...patch })); } catch { /* ignore */ }
+}
+function medsTakenToday() {
+  try { return localStorage.getItem(MEDS_TODAY_KEY) === localDate(new Date()); } catch { return false; }
+}
+function setMedsTaken(taken) {
+  try {
+    if (taken) localStorage.setItem(MEDS_TODAY_KEY, localDate(new Date()));
+    else localStorage.removeItem(MEDS_TODAY_KEY);
+  } catch { /* ignore */ }
+}
+
+function renderMedsRow() {
+  const taken = medsTakenToday();
+  document.querySelectorAll('#log-form [data-meds]').forEach((b) => b.setAttribute('aria-checked', String((b.dataset.meds === 'yes') === taken)));
+}
+
 // ---------- 表單（首頁與編輯對話框共用同一組欄位） ----------
 
 // withTime：編輯對話框一律顯示時間欄；首頁改用「現在／改時間」
@@ -167,7 +198,19 @@ function fieldsHtml(withTime) {
         <span class="bp-unit">${escapeHtml(t(unit))}</span>
       </span>
     </label>`;
-  const chips = (field, type) => OPTIONS[field].map((c) => `<label class="chip"><input type="${type}" name="${field}" value="${c}"><span>${escapeHtml(t(`opt.${field}.${c}`))}</span></label>`).join('');
+  // 首頁有「今天的血壓藥」開關時，情境裡就不重複列吃藥前／後（編輯對話框保留完整選項）
+  const meds = getMedsPref();
+  const hideMedTags = !withTime && meds.on;
+  const chips = (field, type) => OPTIONS[field].filter((c) => !(hideMedTags && MED_TAGS.includes(c)))
+    .map((c) => `<label class="chip"><input type="${type}" name="${field}" value="${c}"><span>${escapeHtml(t(`opt.${field}.${c}`))}</span></label>`).join('');
+  const medsRow = hideMedTags ? `
+    <div class="meds-row">
+      <span class="meds-label">${icon('pill')}${escapeHtml(t('log.medsToday'))}${meds.name ? ` <small>${escapeHtml(meds.name)}</small>` : ''}</span>
+      <div class="seg meds-seg" role="radiogroup" aria-label="${escapeHtml(t('log.medsToday'))}">
+        <button type="button" role="radio" data-meds="no">${escapeHtml(t('log.medsNo'))}</button>
+        <button type="button" role="radio" data-meds="yes">${escapeHtml(t('log.medsYes'))}</button>
+      </div>
+    </div>` : '';
   return `
     <div class="bp-inputs">
       ${num('systolic', 'systolicHint', 'log.unit', '120')}
@@ -182,6 +225,7 @@ function fieldsHtml(withTime) {
           <button type="button" class="link-btn" data-toggle-time>${escapeHtml(t('log.changeTime'))}</button>
           <input type="datetime-local" name="time" class="log-time-input" hidden aria-label="${escapeHtml(t('log.time'))}">
         </div>`}
+    ${medsRow}
     <details class="log-more">
       <summary>${escapeHtml(t('log.more'))}</summary>
       <fieldset class="field"><legend>${escapeHtml(t('log.arm'))}</legend><div class="chips">${chips('arm', 'radio')}</div></fieldset>
@@ -195,6 +239,7 @@ function buildForms() {
   $('#form-fields').innerHTML = fieldsHtml(true);
   logTimeMode = 'now';
   renderLogTime();
+  renderMedsRow();
 }
 
 // 首頁的時間：預設「現在」（存檔那一刻），按「改時間」才出現選擇器（補登用）
@@ -275,6 +320,9 @@ function submitLog(e) {
   const form = $('#log-form');
   const { record, error } = readForm(form, emptyRecord());
   if (error) return showError($('#log-error'), error);
+  if (getMedsPref().on) {
+    record.tags = [...record.tags.filter((x) => !MED_TAGS.includes(x)), medsTakenToday() ? 'after_meds' : 'before_meds'];
+  }
   showError($('#log-error'), '');
   buzz(30);
   save(record, true);
@@ -488,6 +536,7 @@ function renderCalLegend() {
     <span>${sample('normal', 'stage1')}${escapeHtml(`${t('cal.legendTop')} · ${t('cal.legendBottom')}`)}</span>
     <span>${sample('normal', null)}${escapeHtml(t('cal.legendEmpty'))}</span>
     <span>${sample('normal', 'normal', 1)}${escapeHtml(t('cal.legendOther'))}</span>
+    <span>${circleSvg({ morning: { cat: 'normal' }, evening: { cat: 'normal' }, meds: true }, { small: true })}${escapeHtml(t('cal.legendMeds'))}</span>
     <span class="cal-legend-cats">${CATEGORIES.map((c) => `<i class="cat-dot cat-${c}"></i>${escapeHtml(t(`cat.${c}`))}`).join(' ')}</span>`;
 }
 
@@ -599,7 +648,7 @@ function updateAiPrompt() {
   aiState.days = Number($('#ai-days input:checked')?.value ?? 30);
   aiState.notes = $('#ai-notes').checked;
   try { localStorage.setItem(AI_KEY, JSON.stringify(aiState)); } catch { /* ignore */ }
-  const { prompt, count } = buildAnalysisPrompt(store.getRecords(), { ...aiState, includeNotes: aiState.notes, lang: getLang() });
+  const { prompt, count } = buildAnalysisPrompt(store.getRecords(), { ...aiState, includeNotes: aiState.notes, lang: getLang(), medName: getMedsPref().name });
   aiPrompt = prompt;
   const links = analysisLinks(prompt);
   $('#ai-open-chatgpt').href = links.chatgpt;
@@ -659,9 +708,12 @@ function readingHtml(r, { showDate = false } = {}) {
   const cat = classify(r.systolic, r.diastolic);
   const period = periodOf(r.time);
   const when = showDate ? formatDateTime(r.time) : `${t(`period.${period}`)} ${formatTime(r.time)}`;
+  const tag = (cls, content) => `<span class="tag ${cls}">${content}</span>`;
   const tags = [
-    r.arm ? t(`opt.arm.${r.arm}`) : '',
-    ...(r.tags ?? []).map((x) => t(`opt.tags.${x}`)),
+    r.tags?.includes('after_meds') ? tag('med', `${icon('pill')}${escapeHtml(t('opt.tags.after_meds'))}`) : '',
+    r.tags?.includes('before_meds') ? tag('med before', escapeHtml(t('opt.tags.before_meds'))) : '',
+    r.arm ? tag('', escapeHtml(t(`opt.arm.${r.arm}`))) : '',
+    ...(r.tags ?? []).filter((x) => !MED_TAGS.includes(x)).map((x) => tag('', escapeHtml(t(`opt.tags.${x}`)))),
   ].filter(Boolean);
   return `
     <li class="reading" data-id="${escapeHtml(r.id)}">
@@ -669,7 +721,7 @@ function readingHtml(r, { showDate = false } = {}) {
       <span class="reading-when">${icon(period === 'morning' ? 'sun' : period === 'evening' ? 'moon' : 'clock')}${escapeHtml(when)}</span>
       <span class="reading-bp"><strong>${r.systolic}</strong><span class="bp-sep">/</span><strong>${r.diastolic}</strong></span>
       <span class="reading-pulse">${r.pulse != null ? `${icon('heart')}${r.pulse}` : ''}</span>
-      ${tags.length || r.notes ? `<span class="reading-tags">${tags.map((x) => `<span class="tag">${escapeHtml(x)}</span>`).join('')}${r.notes ? `<span class="tag note">${escapeHtml(r.notes)}</span>` : ''}</span>` : ''}
+      ${tags.length || r.notes ? `<span class="reading-tags">${tags.join('')}${r.notes ? `<span class="tag note">${escapeHtml(r.notes)}</span>` : ''}</span>` : ''}
     </li>`;
 }
 
@@ -770,6 +822,10 @@ async function install() {
 }
 
 function renderSettings() {
+  const meds = getMedsPref();
+  $('#meds-toggle').checked = meds.on;
+  if (document.activeElement !== $('#meds-name')) $('#meds-name').value = meds.name;
+  $('#meds-name').closest('.meds-name').hidden = !meds.on;
   const theme = window.bpackTheme?.get() ?? 'system';
   document.querySelectorAll('[data-theme-choice]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.themeChoice === theme)));
   const email = auth.getEmail();
@@ -827,7 +883,25 @@ function bindEvents() {
 
   const logForm = $('#log-form');
   logForm.addEventListener('submit', submitLog);
-  logForm.addEventListener('click', (e) => { if (e.target.closest('[data-toggle-time]')) toggleLogTime(); });
+  logForm.addEventListener('click', (e) => {
+    if (e.target.closest('[data-toggle-time]')) return toggleLogTime();
+    const meds = e.target.closest('[data-meds]');
+    if (meds) {
+      setMedsTaken(meds.dataset.meds === 'yes');
+      renderMedsRow();
+    }
+  });
+  $('#meds-toggle').addEventListener('change', (e) => {
+    setMedsPref({ on: e.target.checked });
+    buildForms();
+    render();
+  });
+  $('#meds-name').addEventListener('input', (e) => {
+    setMedsPref({ name: e.target.value.trim() });
+    $('#log-fields').innerHTML = fieldsHtml(false);
+    renderLogTime();
+    renderMedsRow();
+  });
   // 每分鐘更新「現在」的時間文字
   setInterval(() => { if (logTimeMode === 'now') renderLogTime(); }, 30000);
 
