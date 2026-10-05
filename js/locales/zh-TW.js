@@ -153,6 +153,24 @@ export default {
   'st.reportFooter': '本摘要由 BPack 依使用者自行輸入的家庭血壓紀錄產生，不構成醫療診斷。',
   'st.notEnough': '紀錄還不夠。',
 
+  // AI 分析
+  'ai.title': 'AI 分析',
+  'ai.desc': '把最近的紀錄交給 AI（ChatGPT、Claude 等），整理趨勢、早晚差異、生活情境的影響，或準備看診要問醫師的問題。回覆語言會跟你的介面語言相同。',
+  'ai.privacy': '這會把你最近 {n} 筆紀錄交給你選擇的 AI 服務分析。本網站不會傳送任何資料，是你的瀏覽器開啟該服務並帶入內容；該服務如何處理資料，由它自己的條款規範。AI 的回答僅供參考，請勿自行調整藥物。',
+  'ai.question': '想問什麼',
+  'ai.p_overview': '整體趨勢與早晚差異',
+  'ai.p_lifestyle': '生活情境的影響與量測習慣',
+  'ai.p_doctor': '準備看診要問的問題',
+  'ai.range': '分析期間',
+  'ai.daysN': '最近 {n} 天',
+  'ai.notes': '包含備註',
+  'ai.copy': '只複製（用其他 AI）',
+  'ai.copied': '已複製；如果 AI 沒有自動帶入，貼上即可',
+  'ai.hintFilled': '問題會自動帶入，直接送出即可。',
+  'ai.hintPaste': '內容較長，按下按鈕時會先複製；打開 AI 後在對話框貼上送出。',
+  'ai.noData': '這段期間沒有紀錄。',
+  'ai.preview': '查看實際會交給 AI 的內容',
+
   // 設定
   'settings.account': '帳號',
   'settings.openSheet': '在 Google 試算表中開啟',

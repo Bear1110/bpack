@@ -561,6 +561,19 @@ dialog.confirm-dialog .dialog-body { padding-top: 1.25rem; }
 .ai-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
 .ai-buttons .btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; flex: 1 1 auto; }
 
+/* AI 分析 */
+.stats-tabs-row { display: flex; align-items: stretch; gap: .5rem; }
+.stats-tabs-row .stats-tabs { flex: 1; min-width: 0; }
+.ai-chip {
+  appearance: none; flex: none; display: inline-flex; align-items: center; gap: .35rem; cursor: pointer;
+  padding: 0 .9rem; min-height: var(--tap); border-radius: 10px; font: inherit; font-size: .9rem; font-weight: 600;
+  border: 1px solid var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--surface)); color: var(--primary);
+}
+.ai-chip .icon { width: 18px; height: 18px; }
+.ai-preview { white-space: pre-wrap; word-break: break-word; font-size: .75rem; max-height: 240px; overflow: auto; margin: .5rem 0 0; padding: .6rem; border-radius: 8px; background: var(--bg); color: var(--muted); }
+#ai-dialog .ai-buttons .btn { flex: 1 1 140px; }
+.ai-buttons .btn.disabled { opacity: .5; pointer-events: none; }
+
 /* 匯入預覽 */
 .import-preview:empty { display: none; }
 .import-preview { margin-top: 1rem; display: flex; flex-direction: column; gap: .4rem; }
@@ -613,6 +626,9 @@ body[data-view="stats"] .fab { display: grid; place-items: center; }
 
 @media (min-width: 600px) {
   .row { grid-template-columns: 1fr 1fr; }
+  /* 桌機：子分頁不必拉滿整列，AI 分析靠右 */
+  .stats-tabs-row { justify-content: space-between; }
+  .stats-tabs-row .stats-tabs { flex: 0 1 420px; }
   .tiles { grid-template-columns: repeat(4, 1fr); }
   .key-figures { grid-template-columns: 1fr 1fr; column-gap: 2rem; }
 

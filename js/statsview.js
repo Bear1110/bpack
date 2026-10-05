@@ -15,7 +15,7 @@ function loadState() {
   try { return { ...def, ...JSON.parse(localStorage.getItem(STATE_KEY) || '{}') }; } catch { return def; }
 }
 
-export function createStatsView(root, { t, getLang, getRecords }) {
+export function createStatsView(root, { t, getLang, getRecords, onAiAnalysis }) {
   let state = loadState();
   const save = () => { try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch { /* ignore */ } };
 
@@ -52,8 +52,11 @@ export function createStatsView(root, { t, getLang, getRecords }) {
           </div>
         </div>
       </div>
-      <div class="seg stats-tabs" role="tablist">
-        ${['self', 'doctor'].map((tab) => `<button type="button" role="tab" data-tab="${tab}" aria-selected="${state.tab === tab}" aria-checked="${state.tab === tab}">${esc(t(`st.tab_${tab}`))}</button>`).join('')}
+      <div class="stats-tabs-row">
+        <div class="seg stats-tabs" role="tablist">
+          ${['self', 'doctor'].map((tab) => `<button type="button" role="tab" data-tab="${tab}" aria-selected="${state.tab === tab}" aria-checked="${state.tab === tab}">${esc(t(`st.tab_${tab}`))}</button>`).join('')}
+        </div>
+        <button type="button" class="ai-chip no-print" data-ai title="${esc(t('ai.desc'))}">${icon('sparkle')}<span>${esc(t('ai.title'))}</span></button>
       </div>`;
   }
 
@@ -203,6 +206,7 @@ export function createStatsView(root, { t, getLang, getRecords }) {
   }
 
   root.addEventListener('click', (e) => {
+    if (e.target.closest('[data-ai]')) return onAiAnalysis?.();
     const el = e.target.closest('[data-range],[data-tab],[data-print]');
     if (!el) return;
     if (el.dataset.print !== undefined) return window.print();

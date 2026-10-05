@@ -8,6 +8,7 @@ import { localDate, dayOf, classify, periodOf, average, groupByDay, inRange, sev
 import { createStatsView } from './statsview.js';
 import { renderCalendar as calendarHtml, circleSvg } from './calendar.js';
 import { buildPrompt, aiLinks, parseImport, buildExport } from './importer.js';
+import { AI_PRESETS, AI_DAYS, buildAnalysisPrompt, aiLinks as analysisLinks } from './aianalysis.js';
 import { applyIcons, icon } from './icons.js';
 import { APP_VERSION } from './version.js';
 
@@ -573,6 +574,48 @@ function bindCalendarSwipe() {
   }, { passive: true });
 }
 
+// ---------- AI 分析 ----------
+
+const AI_KEY = 'bp.ai';
+let aiPrompt = '';
+const aiState = (() => {
+  const def = { preset: 'overview', days: 30, notes: true };
+  try { return { ...def, ...JSON.parse(localStorage.getItem(AI_KEY) || '{}') }; } catch { return def; }
+})();
+
+function openAiDialog() {
+  const chip = (field, value, labelText) => `<label class="chip"><input type="radio" name="${field}" value="${value}"><span>${escapeHtml(labelText)}</span></label>`;
+  $('#ai-presets').innerHTML = AI_PRESETS.map((p) => chip('ai-preset', p, t(`ai.p_${p}`))).join('');
+  $('#ai-days').innerHTML = AI_DAYS.map((n) => chip('ai-days', n, t('ai.daysN', { n }))).join('');
+  ($(`#ai-presets input[value="${aiState.preset}"]`) ?? $('#ai-presets input')).checked = true;
+  ($(`#ai-days input[value="${aiState.days}"]`) ?? $('#ai-days input')).checked = true;
+  $('#ai-notes').checked = aiState.notes;
+  updateAiPrompt();
+  $('#ai-dialog').showModal();
+}
+
+function updateAiPrompt() {
+  aiState.preset = $('#ai-presets input:checked')?.value ?? 'overview';
+  aiState.days = Number($('#ai-days input:checked')?.value ?? 30);
+  aiState.notes = $('#ai-notes').checked;
+  try { localStorage.setItem(AI_KEY, JSON.stringify(aiState)); } catch { /* ignore */ }
+  const { prompt, count } = buildAnalysisPrompt(store.getRecords(), { ...aiState, includeNotes: aiState.notes, lang: getLang() });
+  aiPrompt = prompt;
+  const links = analysisLinks(prompt);
+  $('#ai-open-chatgpt').href = links.chatgpt;
+  $('#ai-open-claude').href = links.claude;
+  $('#ai-privacy').textContent = t('ai.privacy', { n: count });
+  $('#ai-hint').textContent = count ? t(links.fits ? 'ai.hintFilled' : 'ai.hintPaste') : t('ai.noData');
+  $('#ai-preview').textContent = prompt;
+  for (const el of document.querySelectorAll('#ai-open-chatgpt, #ai-open-claude, #ai-copy')) el.classList.toggle('disabled', !count);
+}
+
+// 開啟 AI 前一律先複製（內容太長、網址放不下時，使用者貼上即可）
+function copyAiPrompt() {
+  if (!aiPrompt) return;
+  navigator.clipboard?.writeText(aiPrompt).then(() => toast(t('ai.copied'))).catch(() => {});
+}
+
 // ---------- 畫面 ----------
 
 function renderSync() {
@@ -818,7 +861,13 @@ function bindEvents() {
     openById(e);
   });
 
-  statsView = createStatsView($('#view-stats'), { t, getLang, getRecords: store.getRecords });
+  statsView = createStatsView($('#view-stats'), { t, getLang, getRecords: store.getRecords, onAiAnalysis: openAiDialog });
+  $('#ai-presets').addEventListener('change', updateAiPrompt);
+  $('#ai-days').addEventListener('change', updateAiPrompt);
+  $('#ai-notes').addEventListener('change', updateAiPrompt);
+  $('#ai-open-chatgpt').addEventListener('click', copyAiPrompt);
+  $('#ai-open-claude').addEventListener('click', copyAiPrompt);
+  $('#ai-copy').addEventListener('click', copyAiPrompt);
 
   $('.theme-seg').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-theme-choice]');
