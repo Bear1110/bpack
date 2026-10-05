@@ -2,7 +2,7 @@
 // Google 的 API 與登入請求一律不經快取。
 // 採「網路優先」，一般部署會自動拿到新版；SHELL 清單有增減時請把 VERSION 加一。
 
-const VERSION = 'v4'; // 網站版本見 js/version.js
+const VERSION = 'v5'; // 網站版本見 js/version.js
 const CACHE = `bpack-${VERSION}`;
 const SHELL = [
   './',
@@ -14,6 +14,7 @@ const SHELL = [
   'js/app.js',
   'js/theme.js',
   'js/charts.js',
+  'js/html.js',
   'js/statsview.js',
   'js/calendar.js',
   'js/importer.js',

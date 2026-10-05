@@ -2,9 +2,8 @@
 // 沒量的那一半是灰的，下午／其他時段有量就在圓下方加一個小點（概念來自常見血壓計 App）。
 // 只產生 HTML，互動由 app.js 處理。
 
-import { dayHalves, localDate } from './stats.js';
-
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+import { dayHalves, localDate, parseDay, bpText } from './stats.js';
+import { esc } from './html.js';
 
 // 一週從哪天開始（0 = 週日）。支援 Intl.Locale 週資訊的瀏覽器依語系決定，否則週日。
 function firstDayOfWeek(lang) {
@@ -33,8 +32,7 @@ function dayLabel(t, dayFmt, date, h) {
   const d = dayFmt.format(date);
   if (!h) return d;
   const parts = [];
-  if (h.morning) parts.push(`${t('period.morning')} ${h.morning.systolic}/${h.morning.diastolic} ${t(`cat.${h.morning.cat}`)}`);
-  if (h.evening) parts.push(`${t('period.evening')} ${h.evening.systolic}/${h.evening.diastolic} ${t(`cat.${h.evening.cat}`)}`);
+  for (const p of ['morning', 'evening']) if (h[p]) parts.push(`${t(`period.${p}`)} ${bpText(h[p].systolic, h[p].diastolic)} ${t(`cat.${h[p].cat}`)}`);
   if (h.other) parts.push(`${t('period.afternoon')} ${h.other}`);
   if (h.meds) parts.push(t('opt.tags.after_meds'));
   return `${d}: ${parts.join(', ')}`;
@@ -49,7 +47,7 @@ export function renderCalendar({ records, month, lang, t, selected }) {
   const dayFmt = new Intl.DateTimeFormat(lang, { month: 'long', day: 'numeric', weekday: 'short' });
   const weekdays = Array.from({ length: 7 }, (_, i) => weekdayFmt.format(new Date(2023, 0, 1 + ((firstDay + i) % 7))));
 
-  const first = new Date(`${month}-01T00:00`);
+  const first = parseDay(`${month}-01`);
   const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
   const lead = (first.getDay() - firstDay + 7) % 7;
 

@@ -1,11 +1,27 @@
 // 血壓統計：全部在瀏覽器內計算，不依賴 DOM。日期以紀錄的本地時間字串為準（YYYY-MM-DD 前綴）。
 
+// ---------- 日期 ----------
+
+export const pad = (n) => String(n).padStart(2, '0');
+
 export function localDate(d) {
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export const dayOf = (iso) => (iso ? iso.slice(0, 10) : null);
+
+// 'YYYY-MM-DD' → 當地午夜的 Date
+export const parseDay = (day) => new Date(`${day}T00:00`);
+
+// 'YYYY-MM-DD' 往前／往後 n 天（用 setDate，不受日光節約時間影響）
+export function addDays(day, n) {
+  const d = parseDay(day);
+  d.setDate(d.getDate() + n);
+  return localDate(d);
+}
+
+// 「128/82」這種寫法各語言相同；缺值時給破折號
+export const bpText = (s, d) => (s == null || d == null ? '—' : `${s}/${d}`);
 
 // ---------- 分級 ----------
 //
@@ -33,12 +49,16 @@ export function classify(systolic, diastolic) {
 // 家庭血壓是否達標（<130/80）
 export const onTarget = (s, d) => Number.isFinite(s) && Number.isFinite(d) && s < 130 && d < 80;
 
+// 兩個數字都有才算一筆有效的量測
+export const hasReading = (r) => Number.isFinite(r.systolic) && Number.isFinite(r.diastolic);
+
 // ---------- 時段 ----------
 //
 // 早上：04:00–11:59；下午：12:00–17:59；晚上：18:00–03:59。
-// 指引建議早晚各量，所以統計只分早／晚（下午歸入「其他」）。
+// 指引建議早晚各量，所以統計與日曆只分早／晚（HALVES），下午歸入「其他」。
 
 export const PERIODS = ['morning', 'afternoon', 'evening'];
+export const HALVES = ['morning', 'evening'];
 
 export function periodOf(iso) {
   if (typeof iso !== 'string' || iso.length < 16) return null;
@@ -56,7 +76,7 @@ const round = (v) => (v == null ? null : Math.round(v));
 
 // 一組紀錄的平均（四捨五入到整數）；心跳只算有填的
 export function average(records) {
-  const valid = records.filter((r) => Number.isFinite(r.systolic) && Number.isFinite(r.diastolic));
+  const valid = records.filter(hasReading);
   const pulses = records.map((r) => r.pulse).filter((p) => Number.isFinite(p));
   return {
     n: valid.length,
@@ -96,42 +116,35 @@ export function inRange(records, from, to) {
 
 // 給統計頁與看診摘要：筆數、天數、平均、早晚平均、各級別筆數、達標比例、最高值
 export function summarize(records) {
-  const valid = records.filter((r) => Number.isFinite(r.systolic) && Number.isFinite(r.diastolic));
+  const valid = records.filter(hasReading);
   const byPeriod = Object.fromEntries(PERIODS.map((p) => [p, average(valid.filter((r) => periodOf(r.time) === p))]));
   const categories = Object.fromEntries(CATEGORIES.map((c) => [c, 0]));
   for (const r of valid) categories[classify(r.systolic, r.diastolic)] += 1;
-  const onTargetN = valid.filter((r) => onTarget(r.systolic, r.diastolic)).length;
-  const highest = valid.reduce((max, r) => (!max || r.systolic > max.systolic || (r.systolic === max.systolic && r.diastolic > max.diastolic) ? r : max), null);
-  const lowest = valid.reduce((min, r) => (!min || r.systolic < min.systolic || (r.systolic === min.systolic && r.diastolic < min.diastolic) ? r : min), null);
+  // 收縮壓優先、再比舒張壓
+  const extreme = (better) => valid.reduce((m, r) => (!m || better(r, m) ? r : m), null);
   return {
     n: valid.length,
-    days: groupByDay(valid).size,
+    days: new Set(valid.map((r) => dayOf(r.time))).size,
     avg: average(valid),
     byPeriod,
     categories,
-    onTarget: onTargetN,
-    highest,
-    lowest,
+    onTarget: valid.filter((r) => onTarget(r.systolic, r.diastolic)).length,
+    highest: extreme((a, b) => a.systolic > b.systolic || (a.systolic === b.systolic && a.diastolic > b.diastolic)),
+    lowest: extreme((a, b) => a.systolic < b.systolic || (a.systolic === b.systolic && a.diastolic < b.diastolic)),
   };
 }
 
 // 「722」習慣：最近 7 天裡，早晚都有量的天數
 export function sevenTwoTwo(records, today) {
-  const end = new Date(`${today}T00:00`);
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(end);
-    d.setDate(end.getDate() - i);
-    return localDate(d);
-  });
   const byDay = groupByDay(records);
   let both = 0;
   let any = 0;
-  for (const day of days) {
-    const list = byDay.get(day) ?? [];
+  for (let i = 0; i < 7; i++) {
+    const list = byDay.get(addDays(today, -i)) ?? [];
     if (!list.length) continue;
     any += 1;
     const periods = new Set(list.map((r) => periodOf(r.time)));
-    if (periods.has('morning') && periods.has('evening')) both += 1;
+    if (HALVES.every((p) => periods.has(p))) both += 1;
   }
   return { days: 7, any, both };
 }
@@ -150,7 +163,7 @@ export function dayHalves(records) {
     map.set(day, {
       morning: half('morning'),
       evening: half('evening'),
-      other: list.filter((r) => periodOf(r.time) === 'afternoon').length,
+      other: list.filter((r) => !HALVES.includes(periodOf(r.time))).length,
       meds: list.some((r) => r.tags?.includes('after_meds')),
     });
   }

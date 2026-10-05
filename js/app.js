@@ -4,16 +4,20 @@ import { openSpreadsheet, fetchEmail, ApiError } from './sheets.js';
 import { OPTIONS, LIMITS, NUMERIC_FIELDS, newId } from './schema.js';
 import { CLIENT_ID } from './config.js';
 import { t, getLang, setLang, initI18n, LANGS } from './i18n.js';
-import { localDate, dayOf, classify, periodOf, average, groupByDay, inRange, sevenTwoTwo, CATEGORIES } from './stats.js';
+import { localDate, dayOf, pad, parseDay, addDays, bpText, classify, periodOf, average, groupByDay, inRange, sevenTwoTwo, CATEGORIES } from './stats.js';
 import { createStatsView } from './statsview.js';
 import { renderCalendar as calendarHtml, circleSvg } from './calendar.js';
-import { buildPrompt, aiLinks, parseImport, buildExport } from './importer.js';
-import { AI_PRESETS, AI_DAYS, buildAnalysisPrompt, aiLinks as analysisLinks } from './aianalysis.js';
+import { buildPrompt, parseImport, buildExport } from './importer.js';
+import { AI_PRESETS, AI_DAYS, buildAnalysisPrompt, aiLinks } from './aianalysis.js';
 import { applyIcons, icon } from './icons.js';
+import { esc, catDot, chipHtml } from './html.js';
 import { APP_VERSION } from './version.js';
 
 const $ = (sel) => document.querySelector(sel);
-const pad = (n) => String(n).padStart(2, '0');
+const isRtl = () => document.documentElement.dir === 'rtl';
+// 一組 role=radio 按鈕：依 data-* 的值同步 aria-checked
+const syncRadios = (selector, key, value) => document.querySelectorAll(selector).forEach((b) => b.setAttribute('aria-checked', String(b.dataset[key] === value)));
+const CLOUD = !!CLIENT_ID; // 沒設定 Google 用戶端時只做本機記錄
 
 let sheet = null;
 let syncState = 'idle'; // idle | syncing | error | offline
@@ -25,24 +29,18 @@ function nowLocal() {
   return `${localDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
-// 「128/82」這種寫法各語言相同
-const bpText = (s, d) => `${s}/${d}`;
+// 不是今年的日期才加年份
+const yearOpt = (d) => (d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {});
 
 function formatDateTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  const year = d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {};
-  return d.toLocaleString(getLang(), { ...year, month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(getLang(), { ...yearOpt(d), month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function formatDay(day) {
-  const d = new Date(`${day}T00:00`);
-  const year = d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {};
-  return d.toLocaleDateString(getLang(), { ...year, month: 'numeric', day: 'numeric', weekday: 'short' });
+  const d = parseDay(day);
+  return d.toLocaleDateString(getLang(), { ...yearOpt(d), month: 'numeric', day: 'numeric', weekday: 'short' });
 }
 
 const formatTime = (iso) => new Date(iso).toLocaleTimeString(getLang(), { hour: '2-digit', minute: '2-digit' });
@@ -51,7 +49,7 @@ let toastTimer;
 // action：{ label, run }，例如「復原」；有按鈕時停留久一點
 function toast(msg, ms = 3000, action = null) {
   const el = $('#toast');
-  el.innerHTML = `<span>${escapeHtml(msg)}</span>${action ? `<button type="button" class="toast-action">${icon(action.icon ?? 'undo')}${escapeHtml(action.label)}</button>` : ''}`;
+  el.innerHTML = `<span>${esc(msg)}</span>${action ? `<button type="button" class="toast-action">${icon(action.icon ?? 'undo')}${esc(action.label)}</button>` : ''}`;
   el.hidden = false;
   if (action) {
     el.querySelector('.toast-action').addEventListener('click', () => {
@@ -66,22 +64,39 @@ function toast(msg, ms = 3000, action = null) {
 // 手機上的觸覺回饋（支援的瀏覽器才會震動；iOS 網頁不支援，安靜略過）
 const buzz = (ms = 20) => { try { navigator.vibrate?.(ms); } catch { /* ignore */ } };
 
+// 存檔、同步時 store 會連續通知好幾次，合併到下一個畫面更新再重畫一次
+let renderQueued = false;
+function scheduleRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    render();
+  });
+}
+
+// 試算表只開一次，之後沿用
+async function ensureSheet(token) {
+  if (!sheet) {
+    sheet = await openSpreadsheet(token, { cachedId: store.getCachedSheetId(), title: t('app.sheetTitle') });
+    store.setCachedSheetId(sheet.id);
+  }
+  return sheet;
+}
+
 // ---------- 同步 ----------
 
 async function trySync() {
   const token = auth.getToken();
-  if (!token) return render();
+  if (!token) return scheduleRender();
   if (!navigator.onLine) {
     syncState = 'offline';
-    return render();
+    return scheduleRender();
   }
   syncState = 'syncing';
   renderSync();
   try {
-    if (!sheet) {
-      sheet = await openSpreadsheet(token, { cachedId: store.getCachedSheetId(), title: t('app.sheetTitle') });
-      store.setCachedSheetId(sheet.id);
-    }
+    await ensureSheet(token);
     const { conflicts } = await store.sync(sheet, token);
     syncState = 'idle';
     if (conflicts) toast(t('sync.conflicts', { n: conflicts }), 6000);
@@ -94,7 +109,7 @@ async function trySync() {
       syncState = navigator.onLine ? 'error' : 'offline';
     }
   }
-  render();
+  scheduleRender();
 }
 
 // 必須在點擊事件中同步呼叫（見 auth.requestToken）
@@ -165,12 +180,8 @@ const MEDS_KEY = 'bp.meds';
 const MEDS_TODAY_KEY = 'bp.medsToday';
 const MED_TAGS = ['before_meds', 'after_meds'];
 
-function getMedsPref() {
-  try { return { on: false, name: '', ...JSON.parse(localStorage.getItem(MEDS_KEY) || '{}') }; } catch { return { on: false, name: '' }; }
-}
-function setMedsPref(patch) {
-  try { localStorage.setItem(MEDS_KEY, JSON.stringify({ ...getMedsPref(), ...patch })); } catch { /* ignore */ }
-}
+const getMedsPref = () => ({ on: false, name: '', ...store.readJson(MEDS_KEY, {}) });
+const setMedsPref = (patch) => store.writeJson(MEDS_KEY, { ...getMedsPref(), ...patch });
 function medsTakenToday() {
   try { return localStorage.getItem(MEDS_TODAY_KEY) === localDate(new Date()); } catch { return false; }
 }
@@ -181,34 +192,30 @@ function setMedsTaken(taken) {
   } catch { /* ignore */ }
 }
 
-function renderMedsRow() {
-  const taken = medsTakenToday();
-  document.querySelectorAll('#log-form [data-meds]').forEach((b) => b.setAttribute('aria-checked', String((b.dataset.meds === 'yes') === taken)));
-}
-
 // ---------- 表單（首頁與編輯對話框共用同一組欄位） ----------
 
-// withTime：編輯對話框一律顯示時間欄；首頁改用「現在／改時間」
-function fieldsHtml(withTime) {
+// dialog：編輯對話框一律顯示時間欄並保留完整的情境選項；首頁改用「現在／改時間」，
+// 有在吃藥時用「今天的血壓藥」開關取代吃藥前／後兩個情境（開關本身就是 tags 的 radio，readForm 直接讀得到）
+function fieldsHtml({ dialog }) {
   const num = (name, hint, unit, placeholder, big = true) => `
     <label class="bp-field ${big ? 'big' : 'pulse'}">
-      <span class="bp-label">${escapeHtml(t(`log.${name}`))} <small>${escapeHtml(t(`log.${hint}`))}</small></span>
+      <span class="bp-label">${esc(t(`log.${name}`))} <small>${esc(t(`log.${hint}`))}</small></span>
       <span class="bp-input">
         <input type="number" inputmode="numeric" name="${name}" min="${LIMITS[name][0]}" max="${LIMITS[name][1]}" step="1" placeholder="${placeholder}" autocomplete="off">
-        <span class="bp-unit">${escapeHtml(t(unit))}</span>
+        <span class="bp-unit">${esc(t(unit))}</span>
       </span>
     </label>`;
-  // 首頁有「今天的血壓藥」開關時，情境裡就不重複列吃藥前／後（編輯對話框保留完整選項）
   const meds = getMedsPref();
-  const hideMedTags = !withTime && meds.on;
-  const chips = (field, type) => OPTIONS[field].filter((c) => !(hideMedTags && MED_TAGS.includes(c)))
-    .map((c) => `<label class="chip"><input type="${type}" name="${field}" value="${c}"><span>${escapeHtml(t(`opt.${field}.${c}`))}</span></label>`).join('');
-  const medsRow = hideMedTags ? `
+  const medsSwitch = !dialog && meds.on;
+  const chips = (field, type) => OPTIONS[field].filter((c) => !(medsSwitch && MED_TAGS.includes(c)))
+    .map((c) => chipHtml(type, field, c, t(`opt.${field}.${c}`))).join('');
+  const taken = medsTakenToday();
+  const medsRow = medsSwitch ? `
     <div class="meds-row">
-      <span class="meds-label">${icon('pill')}${escapeHtml(t('log.medsToday'))}${meds.name ? ` <small>${escapeHtml(meds.name)}</small>` : ''}</span>
-      <div class="seg meds-seg" role="radiogroup" aria-label="${escapeHtml(t('log.medsToday'))}">
-        <button type="button" role="radio" data-meds="no">${escapeHtml(t('log.medsNo'))}</button>
-        <button type="button" role="radio" data-meds="yes">${escapeHtml(t('log.medsYes'))}</button>
+      <span class="meds-label">${icon('pill')}${esc(t('log.medsToday'))}${meds.name ? ` <small>${esc(meds.name)}</small>` : ''}</span>
+      <div class="seg meds-seg" role="radiogroup" aria-label="${esc(t('log.medsToday'))}">
+        <label><input type="radio" name="tags" value="before_meds"${taken ? '' : ' checked'}><span>${esc(t('log.medsNo'))}</span></label>
+        <label><input type="radio" name="tags" value="after_meds"${taken ? ' checked' : ''}><span>${esc(t('log.medsYes'))}</span></label>
       </div>
     </div>` : '';
   return `
@@ -218,28 +225,27 @@ function fieldsHtml(withTime) {
       ${num('diastolic', 'diastolicHint', 'log.unit', '80')}
       ${num('pulse', 'pulseHint', 'log.pulseUnit', '70', false)}
     </div>
-    ${withTime
-      ? `<label class="field"><span>${escapeHtml(t('log.time'))}</span><input type="datetime-local" name="time" required></label>`
+    ${dialog
+      ? `<label class="field"><span>${esc(t('log.time'))}</span><input type="datetime-local" name="time" required></label>`
       : `<div class="log-time">
           ${icon('clock')}<span class="log-time-text" data-time-text></span>
-          <button type="button" class="link-btn" data-toggle-time>${escapeHtml(t('log.changeTime'))}</button>
-          <input type="datetime-local" name="time" class="log-time-input" hidden aria-label="${escapeHtml(t('log.time'))}">
+          <button type="button" class="link-btn" data-toggle-time>${esc(t('log.changeTime'))}</button>
+          <input type="datetime-local" name="time" class="log-time-input" hidden aria-label="${esc(t('log.time'))}">
         </div>`}
     ${medsRow}
     <details class="log-more">
-      <summary>${escapeHtml(t('log.more'))}</summary>
-      <fieldset class="field"><legend>${escapeHtml(t('log.arm'))}</legend><div class="chips">${chips('arm', 'radio')}</div></fieldset>
-      <fieldset class="field"><legend>${escapeHtml(t('log.tags'))}</legend><div class="chips">${chips('tags', 'checkbox')}</div></fieldset>
-      <label class="field"><span>${escapeHtml(t('log.notes'))}</span><textarea name="notes" rows="2"></textarea></label>
+      <summary>${esc(t('log.more'))}</summary>
+      <fieldset class="field"><legend>${esc(t('log.arm'))}</legend><div class="chips">${chips('arm', 'radio')}</div></fieldset>
+      <fieldset class="field"><legend>${esc(t('log.tags'))}</legend><div class="chips">${chips('tags', 'checkbox')}</div></fieldset>
+      <label class="field"><span>${esc(t('log.notes'))}</span><textarea name="notes" rows="2"></textarea></label>
     </details>`;
 }
 
 function buildForms() {
-  $('#log-fields').innerHTML = fieldsHtml(false);
-  $('#form-fields').innerHTML = fieldsHtml(true);
+  $('#log-fields').innerHTML = fieldsHtml({ dialog: false });
+  $('#form-fields').innerHTML = fieldsHtml({ dialog: true });
   logTimeMode = 'now';
   renderLogTime();
-  renderMedsRow();
 }
 
 // 首頁的時間：預設「現在」（存檔那一刻），按「改時間」才出現選擇器（補登用）
@@ -287,10 +293,10 @@ function readForm(form, base) {
   }
   if (nums.systolic == null || nums.diastolic == null) return { error: t('log.required') };
   if (nums.systolic <= nums.diastolic) return { error: t('log.invalid') };
-  const time = f.time.hidden || !f.time.value ? nowLocal() : f.time.value;
+  if (!f.time.value) return { error: t('log.required') };
   const record = {
     ...base,
-    time,
+    time: f.time.value,
     ...nums,
     arm: form.querySelector('input[name="arm"]:checked')?.value ?? '',
     tags: [...form.querySelectorAll('input[name="tags"]:checked')].map((el) => el.value),
@@ -302,7 +308,7 @@ function readForm(form, base) {
 function fillForm(form, r) {
   const f = form.elements;
   for (const name of NUMERIC_FIELDS) f[name].value = r[name] ?? '';
-  if (f.time) f.time.value = r.time || '';
+  f.time.value = r.time || '';
   form.querySelectorAll('input[name="arm"]').forEach((el) => { el.checked = el.value === r.arm; });
   form.querySelectorAll('input[name="tags"]').forEach((el) => { el.checked = r.tags?.includes(el.value); });
   f.notes.value = r.notes || '';
@@ -318,11 +324,9 @@ function showError(el, msg) {
 function submitLog(e) {
   e.preventDefault();
   const form = $('#log-form');
+  if (logTimeMode === 'now') form.elements.time.value = nowLocal(); // 存檔那一刻才取時間
   const { record, error } = readForm(form, emptyRecord());
   if (error) return showError($('#log-error'), error);
-  if (getMedsPref().on) {
-    record.tags = [...record.tags.filter((x) => !MED_TAGS.includes(x)), medsTakenToday() ? 'after_meds' : 'before_meds'];
-  }
   showError($('#log-error'), '');
   buzz(30);
   save(record, true);
@@ -359,7 +363,6 @@ function openForm(record, preset = {}) {
 function submitForm(e) {
   e.preventDefault();
   const form = $('#record-form');
-  if (!form.elements.time.value) return showError($('#form-error'), t('log.required'));
   const { record, error } = readForm(form, editing ?? emptyRecord());
   if (error) return showError($('#form-error'), error);
   save(record, !editing);
@@ -405,21 +408,14 @@ function confirmClear(e) {
   tokenPromise
     .then(async (token) => {
       await store.whenIdle();
-      if (token) {
-        if (!sheet) {
-          sheet = await openSpreadsheet(token, { cachedId: store.getCachedSheetId(), title: t('app.sheetTitle') });
-          store.setCachedSheetId(sheet.id);
-        }
-        await sheet.clearAll(token);
-      }
+      if (token) await (await ensureSheet(token)).clearAll(token);
       store.clearRecords();
       $('#clear-dialog').close();
       toast(t('clear.done'));
     })
     .catch((err) => {
       console.error(err);
-      $('#clear-error').textContent = t('clear.failed');
-      $('#clear-error').hidden = false;
+      showError($('#clear-error'), t('clear.failed'));
       onClearInput();
     });
 }
@@ -476,17 +472,17 @@ function previewImport() {
   try {
     result = parseImport(text, store.getRecords());
   } catch {
-    box.innerHTML = `<p class="error">${escapeHtml(t('import.noJson'))}</p>`;
+    box.innerHTML = `<p class="error">${esc(t('import.noJson'))}</p>`;
     return;
   }
   pendingImport = result.records;
   const n = pendingImport.length;
-  const shown = pendingImport.slice(0, 20).map((r) => `<li>${escapeHtml(`${formatDateTime(r.time)} · ${bpText(r.systolic, r.diastolic)}${r.pulse != null ? ` · ${t('list.pulse', { n: r.pulse })}` : ''}`)}</li>`).join('');
+  const shown = pendingImport.slice(0, 20).map((r) => `<li>${esc(`${formatDateTime(r.time)} · ${bpText(r.systolic, r.diastolic)}${r.pulse != null ? ` · ${t('list.pulse', { n: r.pulse })}` : ''}`)}</li>`).join('');
   box.innerHTML = `
-    <p class="ok">${escapeHtml(t('import.ready', { n }))}</p>
-    ${result.duplicates ? `<p class="muted small">${escapeHtml(t('import.duplicates', { n: result.duplicates }))}</p>` : ''}
-    ${result.errors.length ? `<p class="error small">${escapeHtml(t('import.errors', { n: result.errors.length }))}</p>` : ''}
-    ${n ? `<ul>${shown}${n > 20 ? `<li class="muted">${escapeHtml(t('import.more', { n: n - 20 }))}</li>` : ''}</ul>` : ''}`;
+    <p class="ok">${esc(t('import.ready', { n }))}</p>
+    ${result.duplicates ? `<p class="muted small">${esc(t('import.duplicates', { n: result.duplicates }))}</p>` : ''}
+    ${result.errors.length ? `<p class="error small">${esc(t('import.errors', { n: result.errors.length }))}</p>` : ''}
+    ${n ? `<ul>${shown}${n > 20 ? `<li class="muted">${esc(t('import.more', { n: n - 20 }))}</li>` : ''}</ul>` : ''}`;
   btn.disabled = !n;
   btn.textContent = t('import.confirm', { n });
 }
@@ -525,19 +521,20 @@ function renderCalendarView() {
   input.max = thisMonth();
   if (document.activeElement !== input && input.value !== calMonth) input.value = calMonth;
   $('#cal-next').disabled = calMonth >= thisMonth();
-  $('#cal-today').hidden = calMonth === thisMonth();
-  $('#calendar-month').innerHTML = calendarHtml({ records: store.getRecords(), month: calMonth, lang: getLang(), t, selected: calSelected });
+  $('#cal-today').disabled = calMonth === thisMonth();
+  const records = store.getRecords().filter((r) => r.time?.startsWith(calMonth));
+  $('#calendar-month').innerHTML = calendarHtml({ records, month: calMonth, lang: getLang(), t, selected: calSelected });
   renderDayDetail();
 }
 
 function renderCalLegend() {
   const sample = (m, e, other = 0) => circleSvg({ morning: m && { cat: m }, evening: e && { cat: e }, other }, { small: true });
   $('#cal-legend').innerHTML = `
-    <span>${sample('normal', 'stage1')}${escapeHtml(`${t('cal.legendTop')} · ${t('cal.legendBottom')}`)}</span>
-    <span>${sample('normal', null)}${escapeHtml(t('cal.legendEmpty'))}</span>
-    <span>${sample('normal', 'normal', 1)}${escapeHtml(t('cal.legendOther'))}</span>
-    <span>${circleSvg({ morning: { cat: 'normal' }, evening: { cat: 'normal' }, meds: true }, { small: true })}${escapeHtml(t('cal.legendMeds'))}</span>
-    <span class="cal-legend-cats">${CATEGORIES.map((c) => `<i class="cat-dot cat-${c}"></i>${escapeHtml(t(`cat.${c}`))}`).join(' ')}</span>`;
+    <span>${sample('normal', 'stage1')}${esc(`${t('cal.legendTop')} · ${t('cal.legendBottom')}`)}</span>
+    <span>${sample('normal', null)}${esc(t('cal.legendEmpty'))}</span>
+    <span>${sample('normal', 'normal', 1)}${esc(t('cal.legendOther'))}</span>
+    <span>${circleSvg({ morning: { cat: 'normal' }, evening: { cat: 'normal' }, meds: true }, { small: true })}${esc(t('cal.legendMeds'))}</span>
+    <span class="cal-legend-cats">${CATEGORIES.map((c) => `${catDot(c)}${esc(t(`cat.${c}`))}`).join(' ')}</span>`;
 }
 
 function renderDayDetail() {
@@ -550,13 +547,13 @@ function renderDayDetail() {
   const title = calSelected ? formatDay(calSelected) : t('cal.monthEntries', { n: items.length });
   panel.innerHTML = `
     <div class="cal-detail-head">
-      <h4>${escapeHtml(title)}</h4>
-      ${calSelected ? `<button type="button" class="link-btn" data-clear-day>${escapeHtml(t('cal.showMonth'))}</button>` : ''}
+      <h4>${esc(title)}</h4>
+      ${calSelected ? `<button type="button" class="link-btn" data-clear-day>${esc(t('cal.showMonth'))}</button>` : ''}
     </div>
     ${items.length
       ? `<ul class="reading-list">${items.map((r) => readingHtml(r, { showDate: !calSelected })).join('')}</ul>`
-      : `<p class="muted small">${escapeHtml(t(calSelected ? 'cal.noEntries' : 'cal.noEntriesMonth'))}</p>`}
-    ${calSelected ? `<button type="button" class="btn ghost small" data-add-day="${calSelected}">＋ ${escapeHtml(t('cal.addForDay'))}</button>` : ''}`;
+      : `<p class="muted small">${esc(t(calSelected ? 'cal.noEntries' : 'cal.noEntriesMonth'))}</p>`}
+    ${calSelected ? `<button type="button" class="btn ghost small" data-add-day="${calSelected}">＋ ${esc(t('cal.addForDay'))}</button>` : ''}`;
 }
 
 // 點日期：只更新選取與明細（不重繪整個月曆）
@@ -577,7 +574,7 @@ function selectDay(day) {
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 function slideCalendar(dir) {
   if (reduceMotion.matches) return;
-  const x = dir * (document.documentElement.dir === 'rtl' ? -1 : 1) * 24;
+  const x = dir * (isRtl() ? -1 : 1) * 24;
   $('#calendar-month').animate(
     [{ transform: `translateX(${x}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }],
     { duration: 200, easing: 'cubic-bezier(.2, .8, .2, 1)' },
@@ -601,7 +598,7 @@ function onCalendarClick(e) {
   }
   if (el.dataset.day) return selectDay(el.dataset.day);
   if (el.hasAttribute('data-clear-day')) return goCal();
-  if (el.dataset.id) return openForm(store.getRecords().find((r) => r.id === el.dataset.id));
+  if (el.dataset.id) return openRecord(el.dataset.id);
   // 補登：日期用選取的那天，時間先帶早上 7 點
   if (el.dataset.addDay) openForm(null, { time: `${el.dataset.addDay}T07:00` });
 }
@@ -618,8 +615,7 @@ function bindCalendarSwipe() {
     const dy = e.changedTouches[0].clientY - y0;
     x0 = null;
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    const rtl = document.documentElement.dir === 'rtl';
-    stepCalendar((dx > 0) !== rtl ? -1 : 1);
+    stepCalendar((dx > 0) !== isRtl() ? -1 : 1);
   }, { passive: true });
 }
 
@@ -627,17 +623,13 @@ function bindCalendarSwipe() {
 
 const AI_KEY = 'bp.ai';
 let aiPrompt = '';
-const aiState = (() => {
-  const def = { preset: 'overview', days: 30, notes: true };
-  try { return { ...def, ...JSON.parse(localStorage.getItem(AI_KEY) || '{}') }; } catch { return def; }
-})();
+const aiState = { preset: 'overview', days: 30, notes: true, ...store.readJson(AI_KEY, {}) };
 
 function openAiDialog() {
-  const chip = (field, value, labelText) => `<label class="chip"><input type="radio" name="${field}" value="${value}"><span>${escapeHtml(labelText)}</span></label>`;
-  $('#ai-presets').innerHTML = AI_PRESETS.map((p) => chip('ai-preset', p, t(`ai.p_${p}`))).join('');
-  $('#ai-days').innerHTML = AI_DAYS.map((n) => chip('ai-days', n, t('ai.daysN', { n }))).join('');
-  ($(`#ai-presets input[value="${aiState.preset}"]`) ?? $('#ai-presets input')).checked = true;
-  ($(`#ai-days input[value="${aiState.days}"]`) ?? $('#ai-days input')).checked = true;
+  const preset = AI_PRESETS.includes(aiState.preset) ? aiState.preset : AI_PRESETS[0];
+  const days = AI_DAYS.includes(aiState.days) ? aiState.days : AI_DAYS[0];
+  $('#ai-presets').innerHTML = AI_PRESETS.map((p) => chipHtml('radio', 'ai-preset', p, t(`ai.p_${p}`), p === preset)).join('');
+  $('#ai-days').innerHTML = AI_DAYS.map((n) => chipHtml('radio', 'ai-days', n, t('ai.daysN', { n }), n === days)).join('');
   $('#ai-notes').checked = aiState.notes;
   updateAiPrompt();
   $('#ai-dialog').showModal();
@@ -647,10 +639,10 @@ function updateAiPrompt() {
   aiState.preset = $('#ai-presets input:checked')?.value ?? 'overview';
   aiState.days = Number($('#ai-days input:checked')?.value ?? 30);
   aiState.notes = $('#ai-notes').checked;
-  try { localStorage.setItem(AI_KEY, JSON.stringify(aiState)); } catch { /* ignore */ }
+  store.writeJson(AI_KEY, aiState);
   const { prompt, count } = buildAnalysisPrompt(store.getRecords(), { ...aiState, includeNotes: aiState.notes, lang: getLang(), medName: getMedsPref().name });
   aiPrompt = prompt;
-  const links = analysisLinks(prompt);
+  const links = aiLinks(prompt);
   $('#ai-open-chatgpt').href = links.chatgpt;
   $('#ai-open-claude').href = links.claude;
   $('#ai-privacy').textContent = t('ai.privacy', { n: count });
@@ -678,24 +670,24 @@ function renderSync() {
   let text = '';
   if (syncState === 'syncing') [kind, text] = ['cloudSync', t('sync.syncing')];
   else if (syncState === 'offline' || syncState === 'error') [kind, text] = ['cloudOff', t(syncState === 'offline' ? 'sync.offline' : 'sync.failed')];
-  else if (pending && CLIENT_ID) [kind, text] = [hasToken ? 'cloudUp' : 'cloudOff', t('sync.pending', { n: pending })];
+  else if (pending && CLOUD) [kind, text] = [hasToken ? 'cloudUp' : 'cloudOff', t('sync.pending', { n: pending })];
   else if (hasToken) [kind, text] = ['cloudCheck', t('sync.synced')];
-  status.innerHTML = kind ? `${icon(kind)}${pending ? `<span class="sync-count">${pending}</span>` : ''}<span class="sync-text">${escapeHtml(text)}</span>` : '';
+  status.innerHTML = kind ? `${icon(kind)}${pending ? `<span class="sync-count">${pending}</span>` : ''}<span class="sync-text">${esc(text)}</span>` : '';
   status.title = text;
   status.setAttribute('aria-label', text);
   status.dataset.kind = kind;
 
   const signinBtn = $('#btn-signin');
-  signinBtn.hidden = hasToken || !CLIENT_ID;
+  signinBtn.hidden = hasToken || !CLOUD;
   signinBtn.disabled = !authReady;
   const full = t(email ? 'auth.reconnect' : 'auth.signIn');
   const short = email ? full : t('auth.signInShort');
-  signinBtn.innerHTML = `<span class="label-full">${escapeHtml(full)}</span><span class="label-short">${escapeHtml(short)}</span>`;
+  signinBtn.innerHTML = `<span class="label-full">${esc(full)}</span><span class="label-short">${esc(short)}</span>`;
   signinBtn.title = full;
   $('#btn-sync').hidden = !hasToken || !pending || syncState === 'syncing';
 
   let msg = '';
-  if (!CLIENT_ID) msg = t('auth.notConfigured');
+  if (!CLOUD) msg = t('auth.notConfigured');
   else if (!email && !(document.body.dataset.view === 'log' && needsBackup())) msg = t('auth.localOnly');
   else if (syncState === 'error') msg = t('sync.failed');
   else if (syncState === 'offline') msg = t('sync.offline');
@@ -710,18 +702,18 @@ function readingHtml(r, { showDate = false } = {}) {
   const when = showDate ? formatDateTime(r.time) : `${t(`period.${period}`)} ${formatTime(r.time)}`;
   const tag = (cls, content) => `<span class="tag ${cls}">${content}</span>`;
   const tags = [
-    r.tags?.includes('after_meds') ? tag('med', `${icon('pill')}${escapeHtml(t('opt.tags.after_meds'))}`) : '',
-    r.tags?.includes('before_meds') ? tag('med before', escapeHtml(t('opt.tags.before_meds'))) : '',
-    r.arm ? tag('', escapeHtml(t(`opt.arm.${r.arm}`))) : '',
-    ...(r.tags ?? []).filter((x) => !MED_TAGS.includes(x)).map((x) => tag('', escapeHtml(t(`opt.tags.${x}`)))),
+    r.tags?.includes('after_meds') ? tag('med', `${icon('pill')}${esc(t('opt.tags.after_meds'))}`) : '',
+    r.tags?.includes('before_meds') ? tag('med before', esc(t('opt.tags.before_meds'))) : '',
+    r.arm ? tag('', esc(t(`opt.arm.${r.arm}`))) : '',
+    ...(r.tags ?? []).filter((x) => !MED_TAGS.includes(x)).map((x) => tag('', esc(t(`opt.tags.${x}`)))),
   ].filter(Boolean);
   return `
-    <li class="reading" data-id="${escapeHtml(r.id)}">
-      <span class="cat-dot cat-${cat}" title="${escapeHtml(t(`cat.${cat}`))}"></span>
-      <span class="reading-when">${icon(period === 'morning' ? 'sun' : period === 'evening' ? 'moon' : 'clock')}${escapeHtml(when)}</span>
+    <li class="reading" data-id="${esc(r.id)}">
+      <i class="cat-dot cat-${cat}" title="${esc(t(`cat.${cat}`))}"></i>
+      <span class="reading-when">${icon(period === 'morning' ? 'sun' : period === 'evening' ? 'moon' : 'clock')}${esc(when)}</span>
       <span class="reading-bp"><strong>${r.systolic}</strong><span class="bp-sep">/</span><strong>${r.diastolic}</strong></span>
       <span class="reading-pulse">${r.pulse != null ? `${icon('heart')}${r.pulse}` : ''}</span>
-      ${tags.length || r.notes ? `<span class="reading-tags">${tags.join('')}${r.notes ? `<span class="tag note">${escapeHtml(r.notes)}</span>` : ''}</span>` : ''}
+      ${tags.length || r.notes ? `<span class="reading-tags">${tags.join('')}${r.notes ? `<span class="tag note">${esc(r.notes)}</span>` : ''}</span>` : ''}
     </li>`;
 }
 
@@ -730,14 +722,13 @@ function renderToday() {
   const list = store.getRecords().filter((r) => dayOf(r.time) === today).sort((a, b) => a.time.localeCompare(b.time));
   $('#today-list').innerHTML = list.length
     ? list.map((r) => readingHtml(r)).join('')
-    : `<li class="muted small">${escapeHtml(t('log.noToday'))}</li>`;
+    : `<li class="muted small">${esc(t('log.noToday'))}</li>`;
 }
 
 // 最近 7 天：平均與分級、722 習慣
 function renderWeek() {
   const today = localDate(new Date());
-  const from = localDate(new Date(Date.now() - 6 * 86400000));
-  const records = inRange(store.getRecords(), from, today);
+  const records = inRange(store.getRecords(), addDays(today, -6), today);
   const card = $('#week-card');
   card.hidden = !records.length;
   if (!records.length) return;
@@ -746,11 +737,11 @@ function renderWeek() {
   const habit = sevenTwoTwo(store.getRecords(), today);
   $('#week-body').innerHTML = `
     <div class="week-avg">
-      <span class="week-bp cat-text-${cat}">${a.systolic}<span class="bp-sep">/</span>${a.diastolic}</span>
-      <span class="cat-badge cat-${cat}">${escapeHtml(t(`cat.${cat}`))}</span>
+      <span class="week-bp cat-text cat-${cat}">${a.systolic}<span class="bp-sep">/</span>${a.diastolic}</span>
+      <span class="cat-badge cat-${cat}">${esc(t(`cat.${cat}`))}</span>
       ${a.pulse != null ? `<span class="muted small">${icon('heart')} ${a.pulse}</span>` : ''}
     </div>
-    <p class="muted small">${escapeHtml(t('log.habit', { both: habit.both }))}<br>${escapeHtml(t('log.habitHint'))}</p>`;
+    <p class="muted small">${esc(t('log.habit', { both: habit.both }))}<br>${esc(t('log.habitHint'))}</p>`;
 }
 
 // 列表只先顯示最近幾天，避免紀錄多時頁面超長
@@ -761,7 +752,7 @@ let listLimit = LIST_INITIAL;
 function renderList() {
   const all = store.getRecords();
   if (!all.length) {
-    $('#record-list').innerHTML = `<li class="muted">${escapeHtml(t('list.empty'))}</li>`;
+    $('#record-list').innerHTML = `<li class="muted">${esc(t('list.empty'))}</li>`;
     return;
   }
   const days = [...groupByDay(all).entries()].reverse(); // 新的在前
@@ -772,17 +763,17 @@ function renderList() {
     const items = [...list].sort((x, y) => y.time.localeCompare(x.time)).map((r) => readingHtml(r)).join('');
     return `
       <li class="list-day">
-        <span class="list-day-name">${escapeHtml(formatDay(day))}</span>
-        ${list.length > 1 ? `<span class="list-day-avg cat-text-${cat}">${escapeHtml(t('list.dayAvg', { bp: bpText(a.systolic, a.diastolic) }))}</span>` : ''}
+        <span class="list-day-name">${esc(formatDay(day))}</span>
+        ${list.length > 1 ? `<span class="list-day-avg cat-text cat-${cat}">${esc(t('list.dayAvg', { bp: bpText(a.systolic, a.diastolic) }))}</span>` : ''}
       </li>${items}`;
   });
   const rest = days.length - shown.length;
   $('#record-list').innerHTML = rows.join('')
-    + (rest > 0 ? `<li class="list-more"><button type="button" class="btn ghost wide" data-more>${escapeHtml(t('list.more', { n: Math.min(rest, LIST_STEP) }))}</button></li>` : '');
+    + (rest > 0 ? `<li class="list-more"><button type="button" class="btn ghost wide" data-more>${esc(t('list.more', { n: Math.min(rest, LIST_STEP) }))}</button></li>` : '');
 }
 
 // 有紀錄但還沒登入：首頁顯示「尚未備份」卡片
-const needsBackup = () => !!CLIENT_ID && !auth.getEmail() && store.getRecords().length > 0;
+const needsBackup = () => CLOUD && !auth.getEmail() && store.getRecords().length > 0;
 function renderBackupCard() {
   const show = needsBackup();
   $('#backup-card').hidden = !show;
@@ -813,12 +804,22 @@ async function install() {
     return;
   }
   const steps = isIOS()
-    ? [`${icon('share')} ${escapeHtml(t('install.ios1'))}`, `${icon('addBox')} ${escapeHtml(t('install.ios2'))}`]
+    ? [`${icon('share')} ${esc(t('install.ios1'))}`, `${icon('addBox')} ${esc(t('install.ios2'))}`]
     : /Android/i.test(navigator.userAgent)
-      ? [escapeHtml(t('install.android'))]
-      : [escapeHtml(t('install.desktop', { key: /Mac/i.test(navigator.platform) ? '⌘ + D' : 'Ctrl + D' }))];
+      ? [esc(t('install.android'))]
+      : [esc(t('install.desktop', { key: /Mac/i.test(navigator.platform) ? '⌘ + D' : 'Ctrl + D' }))];
   $('#install-steps').innerHTML = steps.map((s) => `<li>${s}</li>`).join('');
   $('#install-dialog').showModal();
+}
+
+// js/theme.js 在 <head> 同步載入，bpackTheme 一定存在
+function renderThemeChoice() {
+  syncRadios('[data-theme-choice]', 'themeChoice', bpackTheme.get());
+}
+
+// 點列表、今天、日曆明細裡的一筆 → 編輯
+function openRecord(id) {
+  openForm(store.getRecords().find((r) => r.id === id));
 }
 
 function renderSettings() {
@@ -826,10 +827,9 @@ function renderSettings() {
   $('#meds-toggle').checked = meds.on;
   if (document.activeElement !== $('#meds-name')) $('#meds-name').value = meds.name;
   $('#meds-name').closest('.meds-name').hidden = !meds.on;
-  const theme = window.bpackTheme?.get() ?? 'system';
-  document.querySelectorAll('[data-theme-choice]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.themeChoice === theme)));
+  renderThemeChoice();
   const email = auth.getEmail();
-  $('#account-email').textContent = email || t(CLIENT_ID ? 'auth.localOnly' : 'auth.notConfigured');
+  $('#account-email').textContent = email || t(CLOUD ? 'auth.localOnly' : 'auth.notConfigured');
   $('#btn-signout').hidden = !email;
   $('#btn-clear').disabled = !store.getRecords().length;
   $('#btn-export').disabled = !store.getRecords().length;
@@ -848,8 +848,9 @@ function render() {
   renderBackupCard();
   renderTagline();
   renderList();
-  if (document.body.dataset.view === 'calendar') renderCalendarView(); // 隱藏時不畫，切過去時再畫
-  statsView?.render();
+  // 日曆與統計隱藏時不畫（量不到寬度，也沒人看），切過去時由 showView 再畫
+  if (document.body.dataset.view === 'calendar') renderCalendarView();
+  if (document.body.dataset.view === 'stats') statsView?.render();
   renderSettings();
 }
 
@@ -883,13 +884,10 @@ function bindEvents() {
 
   const logForm = $('#log-form');
   logForm.addEventListener('submit', submitLog);
-  logForm.addEventListener('click', (e) => {
-    if (e.target.closest('[data-toggle-time]')) return toggleLogTime();
-    const meds = e.target.closest('[data-meds]');
-    if (meds) {
-      setMedsTaken(meds.dataset.meds === 'yes');
-      renderMedsRow();
-    }
+  logForm.addEventListener('click', (e) => { if (e.target.closest('[data-toggle-time]')) toggleLogTime(); });
+  // 「今天的血壓藥」開關：記住今天吃了沒（以天為單位）
+  logForm.addEventListener('change', (e) => {
+    if (e.target.matches('.meds-seg input') && e.target.checked) setMedsTaken(e.target.value === 'after_meds');
   });
   $('#meds-toggle').addEventListener('change', (e) => {
     setMedsPref({ on: e.target.checked });
@@ -898,12 +896,10 @@ function bindEvents() {
   });
   $('#meds-name').addEventListener('input', (e) => {
     setMedsPref({ name: e.target.value.trim() });
-    $('#log-fields').innerHTML = fieldsHtml(false);
-    renderLogTime();
-    renderMedsRow();
+    buildForms();
   });
-  // 每分鐘更新「現在」的時間文字
-  setInterval(() => { if (logTimeMode === 'now') renderLogTime(); }, 30000);
+  // 定時更新「現在」的時間文字（分頁隱藏時不用）
+  setInterval(() => { if (logTimeMode === 'now' && !document.hidden) renderLogTime(); }, 30000);
 
   // 單選膠囊：點已選的那一個可以取消（radio 預設不能取消）
   for (const form of [logForm, $('#record-form')]) {
@@ -924,7 +920,7 @@ function bindEvents() {
 
   const openById = (e) => {
     const li = e.target.closest('li[data-id]');
-    if (li) openForm(store.getRecords().find((r) => r.id === li.dataset.id));
+    if (li) openRecord(li.dataset.id);
   };
   $('#today-list').addEventListener('click', openById);
   $('#record-list').addEventListener('click', (e) => {
@@ -946,8 +942,8 @@ function bindEvents() {
   $('.theme-seg').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-theme-choice]');
     if (!btn) return;
-    window.bpackTheme?.set(btn.dataset.themeChoice);
-    renderSettings();
+    bpackTheme.set(btn.dataset.themeChoice);
+    renderThemeChoice();
   });
 
   $('#btn-clear').addEventListener('click', openClearDialog);
@@ -996,7 +992,7 @@ function bindEvents() {
   window.addEventListener('online', trySync);
   window.addEventListener('offline', () => { syncState = 'offline'; renderSync(); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') trySync(); });
-  store.onChange(render);
+  store.onChange(scheduleRender);
 }
 
 async function init() {
@@ -1006,7 +1002,7 @@ async function init() {
   $('#lang-select').value = getLang();
   refreshLanguage();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW', e));
-  if (CLIENT_ID) {
+  if (CLOUD) {
     try {
       await auth.initAuth();
       authReady = true;

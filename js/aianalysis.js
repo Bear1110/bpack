@@ -2,7 +2,7 @@
 // 本網站不傳送任何資料：是使用者的瀏覽器開新分頁、把文字帶過去（或複製後自己貼上）。
 // 紀錄用精簡格式（AI 讀得懂、網址較短），備註保留原文；回覆語言依介面語言指定。
 
-import { localDate, periodOf } from './stats.js';
+import { localDate, periodOf, inRange, hasReading, addDays, bpText } from './stats.js';
 
 export const AI_PRESETS = ['overview', 'lifestyle', 'doctor'];
 export const AI_DAYS = [14, 30, 90];
@@ -21,7 +21,7 @@ const MAX_URL_QUERY = 7000;
 // 精簡格式：每筆一行，例如「2026-10-05 07:12 M 128/82 p70 L tags=after_meds | notes=...」
 function entryLine(r, includeNotes) {
   const period = { morning: 'M', afternoon: 'A', evening: 'E' }[periodOf(r.time)] ?? '';
-  const parts = [`${r.time.replace('T', ' ')} ${period} ${r.systolic}/${r.diastolic}`];
+  const parts = [`${r.time.replace('T', ' ')} ${period} ${bpText(r.systolic, r.diastolic)}`];
   if (Number.isFinite(r.pulse)) parts.push(`p${r.pulse}`);
   if (r.arm) parts.push(r.arm === 'left' ? 'L' : 'R');
   if (r.tags?.length) parts.push(`tags=${r.tags.join(',')}`);
@@ -31,10 +31,8 @@ function entryLine(r, includeNotes) {
 
 // 回傳 { prompt, count, from, to }；records 取最近 days 天內的紀錄，依時間由舊到新排列
 export function buildAnalysisPrompt(records, { days, preset, lang, includeNotes, medName = '', today = localDate(new Date()) }) {
-  const from = localDate(new Date(new Date(`${today}T00:00`).getTime() - (days - 1) * 86400000));
-  const recent = records
-    .filter((r) => r.time && Number.isFinite(r.systolic) && Number.isFinite(r.diastolic) && r.time.slice(0, 10) >= from && r.time.slice(0, 10) <= today)
-    .sort((a, b) => a.time.localeCompare(b.time));
+  const from = addDays(today, -(days - 1));
+  const recent = inRange(records.filter(hasReading), from, today).sort((a, b) => a.time.localeCompare(b.time));
   if (!recent.length) return { prompt: '', count: 0, from, to: today };
   const prompt = `I keep a home blood pressure diary. Below are my ${recent.length} readings from the last ${days} days (${from} to ${today}), oldest first.
 Format of each line: date time, period (M = morning, A = afternoon, E = evening), systolic/diastolic in mmHg, p = pulse, L/R = arm, situation tags, notes.

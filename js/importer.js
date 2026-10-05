@@ -5,6 +5,8 @@
 // 解析刻意寬鬆：允許 ```json 圍欄、前後說明文字、各語言的選項名稱。
 
 import { OPTIONS, LIMITS, newId } from './schema.js';
+import { pad } from './stats.js';
+export { aiLinks } from './aianalysis.js';
 import en from './locales/en.js';
 import zhTW from './locales/zh-TW.js';
 
@@ -42,15 +44,6 @@ ${list('opt.tags', OPTIONS.tags)}
 
 My readings:
 `;
-}
-
-// 直接開啟 AI 並帶入提示詞（只含格式說明，不含使用者資料）
-export function aiLinks(prompt) {
-  const q = encodeURIComponent(prompt);
-  return {
-    chatgpt: `https://chatgpt.com/?q=${q}`,
-    claude: `https://claude.ai/new?q=${q}`,
-  };
 }
 
 // ---------- 解析 ----------
@@ -100,10 +93,9 @@ function normTime(v) {
   if (!s) return null;
   const m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s](\d{1,2}):(\d{2}))?/);
   if (!m) return null;
-  const p = (n) => String(n).padStart(2, '0');
   const [, y, mo, d, h = '12', mi = '0'] = m;
   if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31 || +h > 23 || +mi > 59) return null;
-  return `${y}-${p(mo)}-${p(d)}T${p(h)}:${p(mi)}`;
+  return `${y}-${pad(mo)}-${pad(d)}T${pad(h)}:${pad(mi)}`;
 }
 
 // 整數且在合理範圍內；否則 null

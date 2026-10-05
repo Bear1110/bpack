@@ -6,13 +6,16 @@ const CACHE_KEY = 'bp.records';
 const OUTBOX_KEY = 'bp.outbox';
 const SHEET_KEY = 'bp.sheetId';
 
-function read(key, fallback) {
+// localStorage 的 JSON 讀寫（其他模組的偏好設定也用這組）
+export function readJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; }
 }
 
-function write(key, value) {
+export function writeJson(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* 空間不足或無痕模式 */ }
 }
+const read = readJson;
+const write = writeJson;
 
 let records = read(CACHE_KEY, []);
 let outbox = read(OUTBOX_KEY, []); // [{ type: 'upsert', record, isNew } | { type: 'delete', id }]

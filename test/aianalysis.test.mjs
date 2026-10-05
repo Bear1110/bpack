@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildAnalysisPrompt, aiLinks } from '../js/aianalysis.js';
 
-const rec = (time, s, d, extra = {}) => ({ id: time, time, systolic: s, diastolic: d, pulse: null, arm: '', tags: [], notes: '', ...extra });
+import { rec } from './helpers.mjs';
 
 test('只取最近 N 天，依時間由舊到新', () => {
   const records = [

@@ -4,10 +4,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  classify, onTarget, periodOf, average, groupByDay, dailyAverages, inRange, summarize, sevenTwoTwo, localDate,
+  classify, onTarget, periodOf, average, groupByDay, dailyAverages, inRange, summarize, sevenTwoTwo, localDate, addDays, bpText, dayHalves, splitByMeds,
 } from '../js/stats.js';
-
-const rec = (time, systolic, diastolic, pulse = null, extra = {}) => ({ id: `${time}-${systolic}`, time, systolic, diastolic, pulse: typeof pulse === 'object' && pulse ? null : pulse, tags: [], ...(typeof pulse === 'object' && pulse ? pulse : extra) });
+import { rec } from './helpers.mjs';
 
 // ---------- 分級 ----------
 
@@ -60,7 +59,7 @@ test('時段：早上 04–11、下午 12–17、晚上 18–03', () => {
 // ---------- 平均 ----------
 
 test('平均四捨五入到整數，心跳只算有填的', () => {
-  const a = average([rec('2026-10-05T08:00', 121, 81, 70), rec('2026-10-05T20:00', 124, 78), rec('2026-10-06T08:00', 130, 82, 75)]);
+  const a = average([rec('2026-10-05T08:00', 121, 81, { pulse: 70 }), rec('2026-10-05T20:00', 124, 78), rec('2026-10-06T08:00', 130, 82, { pulse: 75 })]);
   assert.equal(a.n, 3);
   assert.equal(a.systolic, 125);
   assert.equal(a.diastolic, 80);
@@ -96,8 +95,8 @@ test('inRange 含頭尾兩天', () => {
 
 test('summarize：筆數、天數、早晚平均、級別分布、達標、最高最低', () => {
   const records = [
-    rec('2026-10-05T07:00', 118, 76, 68),
-    rec('2026-10-05T21:00', 135, 85, 72),
+    rec('2026-10-05T07:00', 118, 76, { pulse: 68 }),
+    rec('2026-10-05T21:00', 135, 85, { pulse: 72 }),
     rec('2026-10-06T07:30', 128, 79),
     rec('2026-10-06T14:00', 142, 91),
   ];
@@ -136,13 +135,15 @@ test('722：最近 7 天裡早晚都有量的天數', () => {
   assert.deepEqual(sevenTwoTwo(records, today), { days: 7, any: 3, both: 2 });
 });
 
-test('localDate 補零', () => {
+test('localDate 補零；addDays 跨月；bpText 缺值', () => {
   assert.equal(localDate(new Date(2026, 0, 5)), '2026-01-05');
+  assert.equal(addDays('2026-03-01', -1), '2026-02-28');
+  assert.equal(addDays('2026-12-31', 1), '2027-01-01');
+  assert.equal(bpText(128, 82), '128/82');
+  assert.equal(bpText(null, 82), '—');
 });
 
 // ---------- 日曆：每天的早晚半圓 ----------
-
-import { dayHalves } from '../js/stats.js';
 
 test('dayHalves：早晚各自平均並分級，下午算成小點', () => {
   const m = dayHalves([
@@ -161,8 +162,6 @@ test('dayHalves：早晚各自平均並分級，下午算成小點', () => {
 });
 
 // ---------- 吃藥前／後 ----------
-
-import { splitByMeds } from '../js/stats.js';
 
 test('dayHalves 標出當天有吃藥；splitByMeds 分開平均', () => {
   const records = [
