@@ -84,7 +84,6 @@ async function ensureSheet(token) {
 // ---------- 同步 ----------
 
 async function trySync() {
-  if (store.isDemo()) return scheduleRender(); // 示範模式完全不連外
   const token = auth.getToken();
   if (!token) return scheduleRender();
   if (!navigator.onLine) {
@@ -789,7 +788,7 @@ function renderBackupCard() {
 }
 
 function renderTagline() {
-  const fresh = !store.getRecords().length && !store.isDemo();
+  const fresh = !store.getRecords().length; // 示範模式一定有資料
   $('#tagline').hidden = !fresh;
   $('#btn-try-demo').hidden = !fresh;
 }
