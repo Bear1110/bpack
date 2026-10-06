@@ -719,7 +719,7 @@ function readingHtml(r, { showDate = false } = {}) {
 
 function renderToday() {
   const today = localDate(new Date());
-  const list = store.getRecords().filter((r) => dayOf(r.time) === today).sort((a, b) => a.time.localeCompare(b.time));
+  const list = store.getRecords().filter((r) => dayOf(r.time) === today).sort((a, b) => b.time.localeCompare(a.time));
   $('#today-list').innerHTML = list.length
     ? list.map((r) => readingHtml(r)).join('')
     : `<li class="muted small">${esc(t('log.noToday'))}</li>`;
