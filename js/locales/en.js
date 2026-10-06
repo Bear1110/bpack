@@ -273,4 +273,11 @@ export default {
   'demo.exit': 'Leave demo',
   'demo.try': 'See an example first',
   'demo.banner': 'Demo mode: this is sample data. It is not synced and does not affect your readings.',
+  'share.name': 'BPack — blood pressure diary',
+  'share.text': 'A free blood pressure diary that keeps your readings in your own Google Drive.',
+  'share.title': 'Share BPack',
+  'share.desc': 'Know someone who tracks their blood pressure? Send them the link to this site. Only the link is shared, never your readings.',
+  'share.button': 'Share this site',
+  'share.copied': 'Link copied',
+  'share.failed': 'Could not share',
 };

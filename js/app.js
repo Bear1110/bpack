@@ -797,6 +797,21 @@ function renderTagline() {
   $('#btn-try-demo').hidden = !fresh;
 }
 
+// ---------- 分享網站 ----------
+
+// 只分享網站網址（不含任何紀錄）。支援的瀏覽器叫出系統分享面板，否則複製連結
+async function shareSite() {
+  const url = document.querySelector('link[rel="canonical"]')?.href ?? location.href;
+  const data = { title: t('share.name'), text: t('share.text'), url };
+  try {
+    if (navigator.share) return await navigator.share(data);
+    await navigator.clipboard.writeText(url);
+    toast(t('share.copied'));
+  } catch (e) {
+    if (e?.name !== 'AbortError') toast(t('share.failed')); // 使用者關掉分享面板不算失敗
+  }
+}
+
 // ---------- 示範模式 ----------
 
 async function enterDemo() {
@@ -908,6 +923,7 @@ function bindEvents() {
   $('#btn-try-demo').addEventListener('click', enterDemo);
   $('#btn-demo-exit').addEventListener('click', exitDemo);
   $('#btn-demo').addEventListener('click', () => (store.isDemo() ? exitDemo() : enterDemo()));
+  $('#btn-share').addEventListener('click', shareSite);
   $('#btn-backup').addEventListener('click', signIn);
   $('#fab').addEventListener('click', () => openForm(null));
 

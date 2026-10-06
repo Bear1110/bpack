@@ -273,4 +273,11 @@ export default {
   'demo.exit': '離開示範',
   'demo.try': '先看看範例',
   'demo.banner': '示範模式：這些是範例資料，不會同步，也不會影響你的紀錄。',
+  'share.name': 'BPack — 血壓日記',
+  'share.text': '免費的血壓日記，紀錄存在你自己的 Google 雲端硬碟。',
+  'share.title': '分享 BPack',
+  'share.desc': '身邊有人也需要量血壓嗎？把這個網站的連結傳給他。只會分享網址，不含你的任何紀錄。',
+  'share.button': '分享這個網站',
+  'share.copied': '已複製連結',
+  'share.failed': '無法分享',
 };
