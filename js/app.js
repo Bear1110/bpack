@@ -29,18 +29,15 @@ function nowLocal() {
   return `${localDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// 不是今年的日期才加年份
-const showYear = (d) => d.getFullYear() !== new Date().getFullYear();
-
 function formatDateTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  return `${dateLabel(d, { year: showYear(d) })} ${clockLabel(d)}`;
+  return `${dateLabel(d)} ${clockLabel(d)}`;
 }
 
 function formatDay(day) {
   const d = parseDay(day);
-  return dateLabel(d, { year: showYear(d) });
+  return dateLabel(d);
 }
 
 const formatTime = (iso) => clockLabel(new Date(iso));
@@ -720,7 +717,7 @@ function readingHtml(r, { showDate = false } = {}) {
   return `
     <li class="reading" data-id="${esc(r.id)}">
       <i class="cat-dot cat-${cat}" title="${esc(t(`cat.${cat}`))}"></i>
-      <span class="reading-when" title="${esc(t(`period.${period}`))}">${icon(period === 'morning' ? 'sun' : period === 'evening' ? 'moon' : 'clock')}${esc(when)}</span>
+      <span class="reading-when" title="${esc(t(`period.${period}`))}" aria-label="${esc(`${t(`period.${period}`)} ${when}`)}">${icon(period === 'morning' ? 'sun' : period === 'evening' ? 'moon' : 'clock')}${esc(when)}</span>
       <span class="reading-bp"><strong>${r.systolic}</strong><span class="bp-sep">/</span><strong>${r.diastolic}</strong></span>
       <span class="reading-pulse">${r.pulse != null ? `${icon('heart')}${r.pulse}` : ''}</span>
       ${tags.length || r.notes ? `<span class="reading-tags">${tags.join('')}${r.notes ? `<span class="tag note">${esc(r.notes)}</span>` : ''}</span>` : ''}

@@ -4,6 +4,7 @@
 
 import { dayHalves, localDate, parseDay, bpText } from './stats.js';
 import { esc } from './html.js';
+import { dateLabel } from './i18n.js';
 
 // 一週從哪天開始（0 = 週日）。支援 Intl.Locale 週資訊的瀏覽器依語系決定，否則週日。
 function firstDayOfWeek(lang) {
@@ -28,8 +29,8 @@ export function circleSvg(halves, { small = false } = {}) {
 }
 
 // 每天的無障礙說明文字
-function dayLabel(t, dayFmt, date, h) {
-  const d = dayFmt.format(date);
+function dayLabel(t, date, h) {
+  const d = dateLabel(date, { long: true });
   if (!h) return d;
   const parts = [];
   for (const p of ['morning', 'evening']) if (h[p]) parts.push(`${t(`period.${p}`)} ${bpText(h[p].systolic, h[p].diastolic)} ${t(`cat.${h[p].cat}`)}`);
@@ -44,7 +45,6 @@ export function renderCalendar({ records, month, lang, t, selected }) {
   const today = localDate(new Date());
   const firstDay = firstDayOfWeek(lang);
   const weekdayFmt = new Intl.DateTimeFormat(lang, { weekday: 'narrow' });
-  const dayFmt = new Intl.DateTimeFormat(lang, { month: 'long', day: 'numeric', weekday: 'short' });
   const weekdays = Array.from({ length: 7 }, (_, i) => weekdayFmt.format(new Date(2023, 0, 1 + ((firstDay + i) % 7))));
 
   const first = parseDay(`${month}-01`);
@@ -64,7 +64,7 @@ export function renderCalendar({ records, month, lang, t, selected }) {
     const future = key > today;
     cells.push(`
       <button type="button" class="${classes.join(' ')}" data-day="${key}" ${future ? 'disabled' : ''}
-        aria-label="${esc(dayLabel(t, dayFmt, date, h))}" aria-pressed="${key === selected}">
+        aria-label="${esc(dayLabel(t, date, h))}" aria-pressed="${key === selected}">
         <span class="cal-num">${d}</span>
         ${future ? '' : circleSvg(h)}
       </button>`);

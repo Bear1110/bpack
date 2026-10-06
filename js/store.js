@@ -6,10 +6,12 @@
 const DEMO_FLAG = 'bp.demoMode';
 let demo = false;
 try { demo = localStorage.getItem(DEMO_FLAG) === '1'; } catch { /* ignore */ }
-const PREFIX = demo ? 'bp.demo.' : 'bp.';
+const DEMO_PREFIX = 'bp.demo.';
+const PREFIX = demo ? DEMO_PREFIX : 'bp.';
 
-const CACHE_KEY = `${PREFIX}records`;
-const OUTBOX_KEY = `${PREFIX}outbox`;
+const keysOf = (prefix) => ({ records: `${prefix}records`, outbox: `${prefix}outbox` });
+const CACHE_KEY = keysOf(PREFIX).records;
+const OUTBOX_KEY = keysOf(PREFIX).outbox;
 const SHEET_KEY = `${PREFIX}sheetId`;
 
 export function isDemo() {
@@ -18,17 +20,16 @@ export function isDemo() {
 
 // 進入示範：寫入範例資料（只放進示範用的儲存鍵）。呼叫後請重新載入頁面。
 export function enterDemo(sampleRecords) {
-  try {
-    localStorage.setItem('bp.demo.records', JSON.stringify(sampleRecords));
-    localStorage.setItem('bp.demo.outbox', '[]');
-    localStorage.setItem(DEMO_FLAG, '1');
-  } catch { /* ignore */ }
+  const keys = keysOf(DEMO_PREFIX);
+  writeJson(keys.records, sampleRecords);
+  writeJson(keys.outbox, []);
+  try { localStorage.setItem(DEMO_FLAG, '1'); } catch { /* ignore */ }
 }
 
 // 離開示範：丟掉示範資料。呼叫後請重新載入頁面。
 export function exitDemo() {
   try {
-    ['bp.demo.records', 'bp.demo.outbox', 'bp.demo.sheetId', DEMO_FLAG].forEach((k) => localStorage.removeItem(k));
+    [...Object.values(keysOf(DEMO_PREFIX)), DEMO_FLAG].forEach((k) => localStorage.removeItem(k));
   } catch { /* ignore */ }
 }
 

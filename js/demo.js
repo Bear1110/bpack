@@ -1,6 +1,6 @@
 // 示範模式的範例資料：以今天為基準往前約 7 個月，固定亂數種子（每次產生的內容相同）。
 // 故事：一開始偏高（第 1～2 期高血壓），約 3 個月前開始吃藥後慢慢降到接近達標；偶爾壓力大、喝咖啡、睡不好會飆高，
-// 少數幾天忘記量或只量一次。每個欄位（脈搏、手臂、情境、備註）都有出現，讓日曆、趨勢、吃藥前後比較、看診摘要都有內容。
+// 少數幾天忘記量或只量一次。脈搏、手臂、情境都有出現，讓日曆、趨勢、吃藥前後比較、看診摘要都有內容。
 
 import { localDate } from './stats.js';
 
@@ -35,7 +35,7 @@ export function buildDemoRecords() {
     const baseSys = 137 - 15 * progress;
     const baseDia = 86 - 10 * progress;
 
-    // 早晚各一次；偶爾只量一次或整天沒量（今天早上以前的不補）
+    // 早晚各一次；偶爾只量一次或整天沒量（今天只有早上，晚上還沒到）
     const skipDay = off > 0 && rand() < 0.05;
     if (skipDay) continue;
     const slots = [];
@@ -47,7 +47,6 @@ export function buildDemoRecords() {
       const tags = [];
       let sys = baseSys + jitter(rand, 6) + (slot.morning ? 4 : -2); // 早上通常比較高
       let dia = baseDia + jitter(rand, 4) + (slot.morning ? 2 : -1);
-      let notes = '';
 
       if (onMeds && !slot.extra) tags.push(slot.morning ? 'before_meds' : 'after_meds');
       if (slot.extra) {
@@ -55,14 +54,12 @@ export function buildDemoRecords() {
         sys += 12; dia += 3;
       } else if (rand() < 0.07) {
         tags.push('stress'); sys += 14; dia += 6;
-        if (rand() < 0.4) notes = '開會前量的';
       } else if (rand() < 0.06) {
         tags.push('poor_sleep'); sys += 9; dia += 4;
       } else if (rand() < 0.05) {
         tags.push('after_caffeine'); sys += 8; dia += 3;
       } else if (rand() < 0.02) {
         tags.push('unwell'); sys += 6; dia += 2;
-        notes = '有點感冒';
       }
 
       const minute = Math.floor(rand() * 60);
@@ -77,7 +74,7 @@ export function buildDemoRecords() {
         pulse,
         arm: rand() < 0.85 ? 'left' : 'right',
         tags,
-        notes,
+        notes: '',
         created_at: stamp,
         updated_at: stamp,
       });
