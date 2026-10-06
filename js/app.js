@@ -3,7 +3,7 @@ import * as store from './store.js';
 import { openSpreadsheet, fetchEmail, ApiError } from './sheets.js';
 import { OPTIONS, LIMITS, NUMERIC_FIELDS, newId } from './schema.js';
 import { CLIENT_ID } from './config.js';
-import { t, getLang, setLang, initI18n, LANGS } from './i18n.js';
+import { t, getLang, setLang, initI18n, LANGS, dateLabel, clockLabel } from './i18n.js';
 import { localDate, dayOf, pad, parseDay, addDays, bpText, classify, periodOf, average, groupByDay, inRange, sevenTwoTwo, CATEGORIES } from './stats.js';
 import { createStatsView } from './statsview.js';
 import { renderCalendar as calendarHtml, circleSvg } from './calendar.js';
@@ -30,20 +30,20 @@ function nowLocal() {
 }
 
 // 不是今年的日期才加年份
-const yearOpt = (d) => (d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {});
+const showYear = (d) => d.getFullYear() !== new Date().getFullYear();
 
 function formatDateTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleString(getLang(), { ...yearOpt(d), month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  return `${dateLabel(d, { year: showYear(d) })} ${clockLabel(d)}`;
 }
 
 function formatDay(day) {
   const d = parseDay(day);
-  return d.toLocaleDateString(getLang(), { ...yearOpt(d), month: 'numeric', day: 'numeric', weekday: 'short' });
+  return dateLabel(d, { year: showYear(d) });
 }
 
-const formatTime = (iso) => new Date(iso).toLocaleTimeString(getLang(), { hour: '2-digit', minute: '2-digit' });
+const formatTime = (iso) => clockLabel(new Date(iso));
 
 let toastTimer;
 // action：{ label, run }，例如「復原」；有按鈕時停留久一點
@@ -709,7 +709,7 @@ function renderSync() {
 function readingHtml(r, { showDate = false } = {}) {
   const cat = classify(r.systolic, r.diastolic);
   const period = periodOf(r.time);
-  const when = showDate ? formatDateTime(r.time) : `${t(`period.${period}`)} ${formatTime(r.time)}`;
+  const when = showDate ? formatDateTime(r.time) : formatTime(r.time); // 時段由圖示表示
   const tag = (cls, content) => `<span class="tag ${cls}">${content}</span>`;
   const tags = [
     r.tags?.includes('after_meds') ? tag('med', `${icon('pill')}${esc(t('opt.tags.after_meds'))}`) : '',
@@ -720,7 +720,7 @@ function readingHtml(r, { showDate = false } = {}) {
   return `
     <li class="reading" data-id="${esc(r.id)}">
       <i class="cat-dot cat-${cat}" title="${esc(t(`cat.${cat}`))}"></i>
-      <span class="reading-when">${icon(period === 'morning' ? 'sun' : period === 'evening' ? 'moon' : 'clock')}${esc(when)}</span>
+      <span class="reading-when" title="${esc(t(`period.${period}`))}">${icon(period === 'morning' ? 'sun' : period === 'evening' ? 'moon' : 'clock')}${esc(when)}</span>
       <span class="reading-bp"><strong>${r.systolic}</strong><span class="bp-sep">/</span><strong>${r.diastolic}</strong></span>
       <span class="reading-pulse">${r.pulse != null ? `${icon('heart')}${r.pulse}` : ''}</span>
       ${tags.length || r.notes ? `<span class="reading-tags">${tags.join('')}${r.notes ? `<span class="tag note">${esc(r.notes)}</span>` : ''}</span>` : ''}
