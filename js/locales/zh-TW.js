@@ -280,4 +280,8 @@ export default {
   'share.button': '分享這個網站',
   'share.copied': '已複製連結',
   'share.failed': '無法分享',
+  'settings.fontSize': '文字大小',
+  'settings.fontStandard': '標準',
+  'settings.fontLarge': '大',
+  'settings.fontXLarge': '特大',
 };

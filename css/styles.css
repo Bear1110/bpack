@@ -68,11 +68,16 @@
 
 * { box-sizing: border-box; }
 
+/* 文字大小（設定 → 文字大小）：縮放 html 的字級，所有 rem 單位跟著放大；底部分頁列同步加高 */
+html[data-font-size="large"] { font-size: 115%; --tabbar-h: 68px; }
+html[data-font-size="xlarge"] { font-size: 130%; --tabbar-h: 76px; }
+html[data-font-size="xlarge"] .tile-value { font-size: 1.55rem; } /* 手機兩欄的格子放不下 1.8rem 的「130/80」 */
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", "Noto Sans TC", "Noto Sans SC", "Noto Sans JP", "PingFang TC", "Hiragino Sans", sans-serif;
+  font: 1rem/1.5 system-ui, -apple-system, "Segoe UI", "Noto Sans TC", "Noto Sans SC", "Noto Sans JP", "PingFang TC", "Hiragino Sans", sans-serif;
   padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
   -webkit-tap-highlight-color: transparent;
 }

@@ -853,6 +853,10 @@ async function install() {
 }
 
 // js/theme.js 在 <head> 同步載入，bpackTheme 一定存在
+function renderFontSizeChoice() {
+  syncRadios('[data-font-size-choice]', 'fontSizeChoice', bpackFontSize.get());
+}
+
 function renderThemeChoice() {
   syncRadios('[data-theme-choice]', 'themeChoice', bpackTheme.get());
 }
@@ -869,6 +873,7 @@ function renderSettings() {
   if (document.activeElement !== $('#meds-name')) $('#meds-name').value = meds.name;
   $('#meds-name').closest('.meds-name').hidden = !meds.on;
   renderThemeChoice();
+  renderFontSizeChoice();
   const email = auth.getEmail();
   $('#account-email').textContent = email || t(CLOUD ? 'auth.localOnly' : 'auth.notConfigured');
   $('#btn-signout').hidden = !email;
@@ -983,6 +988,13 @@ function bindEvents() {
   $('#ai-open-chatgpt').addEventListener('click', copyAiPrompt);
   $('#ai-open-claude').addEventListener('click', copyAiPrompt);
   $('#ai-copy').addEventListener('click', copyAiPrompt);
+
+  $('.fontsize-seg').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-font-size-choice]');
+    if (!btn) return;
+    bpackFontSize.set(btn.dataset.fontSizeChoice);
+    renderFontSizeChoice();
+  });
 
   $('.theme-seg').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-theme-choice]');

@@ -280,4 +280,8 @@ export default {
   'share.button': 'Share this site',
   'share.copied': 'Link copied',
   'share.failed': 'Could not share',
+  'settings.fontSize': 'Text size',
+  'settings.fontStandard': 'Standard',
+  'settings.fontLarge': 'Large',
+  'settings.fontXLarge': 'Extra large',
 };

@@ -1,4 +1,4 @@
-// 主題（淺色／深色）：在 <head> 以一般 script 載入，畫面畫出來之前就套用，避免閃一下。
+// 主題（淺色／深色）與文字大小：在 <head> 以一般 script 載入，畫面畫出來之前就套用，避免閃一下。
 // 偏好存在 localStorage（'light' / 'dark'；沒有＝跟隨系統），結果寫在 <html data-theme>，CSS 依此換色。
 (() => {
   const KEY = 'bp.theme';
@@ -23,6 +23,33 @@
     set(v) {
       try {
         if (v === 'light' || v === 'dark') localStorage.setItem(KEY, v);
+        else localStorage.removeItem(KEY);
+      } catch { /* ignore */ }
+      apply();
+    },
+  };
+})();
+
+// 文字大小：三個級距（standard / large / xlarge），結果寫在 <html data-font-size>，CSS 以 rem 縮放整個版面。
+// 同樣在畫面畫出來之前套用，避免字體跳一下。
+(() => {
+  const KEY = 'bp.fontSize';
+  const LEVELS = ['standard', 'large', 'xlarge'];
+  const get = () => {
+    try {
+      const v = localStorage.getItem(KEY);
+      return LEVELS.includes(v) ? v : 'standard';
+    } catch { return 'standard'; }
+  };
+  const apply = () => { document.documentElement.dataset.fontSize = get(); };
+  apply();
+  addEventListener('storage', (e) => { if (e.key === KEY) apply(); });
+
+  window.bpackFontSize = {
+    get,
+    set(v) {
+      try {
+        if (LEVELS.includes(v) && v !== 'standard') localStorage.setItem(KEY, v);
         else localStorage.removeItem(KEY);
       } catch { /* ignore */ }
       apply();
