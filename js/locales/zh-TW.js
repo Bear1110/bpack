@@ -217,6 +217,7 @@ export default {
   'import.step1': '1. 開啟 AI，把你的血壓紀錄（文字、表格或筆記本的照片）貼在提示詞後面送出。',
   'import.privacy': '本網站不會把你的資料傳給任何 AI，提示詞只包含格式說明。',
   'import.title': '匯入紀錄',
+  'import.button': '匯入',
   'import.desc': '把你在其他地方的血壓紀錄（筆記、血壓計 App、照片裡的表格）交給 AI 整理後匯入，或直接選擇本網站匯出的 JSON 檔。',
   'import.ready': '可匯入 {n} 筆',
   'import.duplicates': '略過重複 {n} 筆',

@@ -217,6 +217,7 @@ export default {
   'import.step1': '1. Open an AI, paste your readings (text, a table or a photo of your notebook) after the prompt, and send.',
   'import.privacy': 'This site never sends your data to any AI. The prompt contains only format instructions.',
   'import.title': 'Import readings',
+  'import.button': 'Import',
   'import.desc': 'Let an AI tidy up readings you kept elsewhere (notes, a blood pressure monitor app, a photo of a table) and import them, or choose a JSON file exported from this site.',
   'import.ready': { one: '{n} reading to import', other: '{n} readings to import' },
   'import.duplicates': { one: 'Skipping {n} duplicate', other: 'Skipping {n} duplicates' },
