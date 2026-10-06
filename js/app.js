@@ -87,6 +87,7 @@ async function ensureSheet(token) {
 // ---------- 同步 ----------
 
 async function trySync() {
+  if (store.isDemo()) return scheduleRender(); // 示範模式完全不連外
   const token = auth.getToken();
   if (!token) return scheduleRender();
   if (!navigator.onLine) {
@@ -660,6 +661,15 @@ function copyAiPrompt() {
 // ---------- 畫面 ----------
 
 function renderSync() {
+  const demo = store.isDemo();
+  $('#demo-banner').hidden = !demo;
+  if (demo) {
+    $('#sync-status').textContent = '';
+    $('#btn-signin').hidden = true;
+    $('#btn-sync').hidden = true;
+    $('#banner').hidden = true;
+    return;
+  }
   const hasToken = auth.hasValidToken();
   const email = auth.getEmail();
   const pending = store.pendingCount();
@@ -773,7 +783,7 @@ function renderList() {
 }
 
 // 有紀錄但還沒登入：首頁顯示「尚未備份」卡片
-const needsBackup = () => CLOUD && !auth.getEmail() && store.getRecords().length > 0;
+const needsBackup = () => !store.isDemo() && CLOUD && !auth.getEmail() && store.getRecords().length > 0;
 function renderBackupCard() {
   const show = needsBackup();
   $('#backup-card').hidden = !show;
@@ -782,7 +792,22 @@ function renderBackupCard() {
 }
 
 function renderTagline() {
-  $('#tagline').hidden = store.getRecords().length > 0;
+  const fresh = !store.getRecords().length && !store.isDemo();
+  $('#tagline').hidden = !fresh;
+  $('#btn-try-demo').hidden = !fresh;
+}
+
+// ---------- 示範模式 ----------
+
+async function enterDemo() {
+  const { buildDemoRecords } = await import('./demo.js');
+  store.enterDemo(buildDemoRecords());
+  location.reload();
+}
+
+function exitDemo() {
+  store.exitDemo();
+  location.reload();
 }
 
 // ---------- 加到主畫面 ----------
@@ -823,6 +848,7 @@ function openRecord(id) {
 }
 
 function renderSettings() {
+  $('#btn-demo').textContent = t(store.isDemo() ? 'demo.exit' : 'demo.enter');
   const meds = getMedsPref();
   $('#meds-toggle').checked = meds.on;
   if (document.activeElement !== $('#meds-name')) $('#meds-name').value = meds.name;
@@ -879,6 +905,9 @@ function bindEvents() {
   $('#btn-signin').addEventListener('click', signIn);
   $('#btn-sync').addEventListener('click', trySync);
   $('#btn-signout').addEventListener('click', signOut);
+  $('#btn-try-demo').addEventListener('click', enterDemo);
+  $('#btn-demo-exit').addEventListener('click', exitDemo);
+  $('#btn-demo').addEventListener('click', () => (store.isDemo() ? exitDemo() : enterDemo()));
   $('#btn-backup').addEventListener('click', signIn);
   $('#fab').addEventListener('click', () => openForm(null));
 

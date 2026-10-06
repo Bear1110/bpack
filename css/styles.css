@@ -134,6 +134,15 @@ h2 { font-size: 1rem; margin: 0 0 .5rem; }
   background: var(--warning-bg); color: var(--warning-text);
 }
 
+/* 示範模式橫幅：一直顯示，避免誤以為是自己的資料 */
+.demo-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  padding: .55rem var(--gutter); font-size: .9rem;
+  background: color-mix(in srgb, var(--primary) 22%, var(--surface)); color: var(--text);
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+}
+.demo-banner[hidden] { display: none; }
+
 /* ---------- 分頁：手機固定在底部 ---------- */
 
 .nav {
@@ -655,7 +664,7 @@ body[data-view="list"] .fab { display: grid; place-items: center; }
 @media print {
   :root { --bg: #fff; --surface: #fff; --text: #111; --muted: #555; --border: #ccc; --grid: #e5e5e5; --series-1: #2a78d6; --series-2: #eb6834; }
   body { background: #fff; padding: 0; font-size: 12px; }
-  .topbar, .nav, .banner, .fab, .site-footer, .stats-filters, .stats-tabs, .no-print, .table-view, #toast, .chart-tip { display: none !important; }
+  .topbar, .nav, .banner, .demo-banner, .fab, .site-footer, .stats-filters, .stats-tabs, .no-print, .table-view, #toast, .chart-tip { display: none !important; }
   main { max-width: none; padding: 0; }
   .card, .tile { border-color: #ccc; break-inside: avoid; box-shadow: none; }
   .stat-grid { grid-template-columns: 1fr 1fr; }

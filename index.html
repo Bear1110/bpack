@@ -65,6 +65,10 @@
   </header>
 
   <p id="banner" class="banner" hidden></p>
+  <div id="demo-banner" class="demo-banner" hidden>
+    <span data-i18n="demo.banner"></span>
+    <button type="button" id="btn-demo-exit" class="btn small" data-i18n="demo.exit"></button>
+  </div>
 
   <main>
     <noscript><p class="card">BPack is a free blood pressure diary that stores your readings in your own Google Drive. Please enable JavaScript to use it.<br>BPack 是免費的血壓日記，紀錄存在你自己的 Google 雲端硬碟。請啟用 JavaScript 以使用本網站。</p></noscript>
@@ -98,6 +102,7 @@
         <button type="button" id="btn-backup" class="btn" data-i18n="backup.button"></button>
       </div>
       <p id="tagline" class="tagline" hidden data-i18n="about.tagline"></p>
+      <button type="button" id="btn-try-demo" class="btn ghost wide" hidden data-i18n="demo.try"></button>
     </section>
 
     <!-- 紀錄列表 -->
@@ -165,6 +170,13 @@
         <h2 class="card-title"><span data-icon="importIcon"></span><span data-i18n="import.title"></span></h2>
         <p class="muted small" data-i18n="import.desc"></p>
         <button id="btn-import" class="btn ghost" data-i18n="import.title"></button>
+      </div>
+
+      <h3 class="settings-group" data-i18n="settings.groupMore"></h3>
+      <div class="card">
+        <h2 class="card-title"><span data-icon="demo"></span><span data-i18n="demo.title"></span></h2>
+        <p class="muted small" data-i18n="demo.desc"></p>
+        <button type="button" id="btn-demo" class="btn ghost"></button>
       </div>
 
       <h3 class="settings-group" data-i18n="settings.groupAbout"></h3>

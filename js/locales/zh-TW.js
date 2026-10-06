@@ -266,4 +266,11 @@ export default {
   'cal.today': '今天',
   'cal.next': '下個月',
   'cal.prev': '上個月',
+  'settings.groupMore': '其他',
+  'demo.title': '示範模式',
+  'demo.desc': '用約 7 個月的範例資料，看看日曆、統計和看診摘要長什麼樣子。不會同步，也不會動到你的真實紀錄；離開後範例資料會清除。',
+  'demo.enter': '進入示範模式',
+  'demo.exit': '離開示範',
+  'demo.try': '先看看範例',
+  'demo.banner': '示範模式：這些是範例資料，不會同步，也不會影響你的紀錄。',
 };

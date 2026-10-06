@@ -266,4 +266,11 @@ export default {
   'cal.today': 'Today',
   'cal.next': 'Next month',
   'cal.prev': 'Previous month',
+  'settings.groupMore': 'More',
+  'demo.title': 'Demo mode',
+  'demo.desc': 'Explore the calendar, stats and doctor summary with about seven months of sample readings. Nothing is synced and your real readings are not touched; the sample data is removed when you leave.',
+  'demo.enter': 'Try demo mode',
+  'demo.exit': 'Leave demo',
+  'demo.try': 'See an example first',
+  'demo.banner': 'Demo mode: this is sample data. It is not synced and does not affect your readings.',
 };

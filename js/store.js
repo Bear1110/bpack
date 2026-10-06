@@ -2,9 +2,35 @@
 // 有權杖、有網路時再同步到試算表。量完血壓存檔不必等登入或網路。
 
 // 鍵名前綴 bp.：bear1110.github.io 下的網站共用同一個 localStorage，要與 Headack（hl.）區隔
-const CACHE_KEY = 'bp.records';
-const OUTBOX_KEY = 'bp.outbox';
-const SHEET_KEY = 'bp.sheetId';
+// 示範模式：用另一組儲存鍵（bp.demo.*），與真實紀錄完全隔離；切換時重新載入頁面
+const DEMO_FLAG = 'bp.demoMode';
+let demo = false;
+try { demo = localStorage.getItem(DEMO_FLAG) === '1'; } catch { /* ignore */ }
+const PREFIX = demo ? 'bp.demo.' : 'bp.';
+
+const CACHE_KEY = `${PREFIX}records`;
+const OUTBOX_KEY = `${PREFIX}outbox`;
+const SHEET_KEY = `${PREFIX}sheetId`;
+
+export function isDemo() {
+  return demo;
+}
+
+// 進入示範：寫入範例資料（只放進示範用的儲存鍵）。呼叫後請重新載入頁面。
+export function enterDemo(sampleRecords) {
+  try {
+    localStorage.setItem('bp.demo.records', JSON.stringify(sampleRecords));
+    localStorage.setItem('bp.demo.outbox', '[]');
+    localStorage.setItem(DEMO_FLAG, '1');
+  } catch { /* ignore */ }
+}
+
+// 離開示範：丟掉示範資料。呼叫後請重新載入頁面。
+export function exitDemo() {
+  try {
+    ['bp.demo.records', 'bp.demo.outbox', 'bp.demo.sheetId', DEMO_FLAG].forEach((k) => localStorage.removeItem(k));
+  } catch { /* ignore */ }
+}
 
 // localStorage 的 JSON 讀寫（其他模組的偏好設定也用這組）
 export function readJson(key, fallback) {
